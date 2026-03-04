@@ -1,0 +1,176 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <Frame name="DMoneyFrameTemplate" virtual="true">
+        <Size>
+            <AbsDimension x="192" y="28"/>
+        </Size>
+        <Frames>
+            <Button name="$parentCopperButton" multiplier="1">
+                <Size>
+                    <AbsDimension x="47" y="19"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="RIGHT">
+                        <Offset>
+                            <AbsDimension x="-13" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Layers>
+                    <Layer level="ARTWORK">
+                        <FontString name="$parentText" inherits="DQuestFont" justifyH="RIGHT">
+                            <Anchors>
+                                <Anchor point="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="-19" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                    <Layer level="OVERLAY">
+                        <Texture file="Interface\AddOns\DialogUI\src\assets\art\icons\Coin-Copper">
+                            <Size>
+                                <AbsDimension x="19" y="19"/>
+                            </Size>
+                            <Anchors>
+                                <Anchor point="RIGHT"/>
+                            </Anchors>
+                        </Texture>
+                    </Layer>
+                </Layers>
+                <Scripts>
+                    <OnClick>
+                        local parent = this:GetParent();
+                        local moneyType = parent.moneyType or "PLAYER";
+                        local moneyTypeInfo = MoneyTypeInfo[moneyType];
+                        if moneyTypeInfo and moneyTypeInfo.UpdateFunc then
+                            local currentMoney = moneyTypeInfo.UpdateFunc();
+                            OpenCoinPickupFrame(this.multiplier, currentMoney, parent);
+                            parent.hasPickup = 1;
+                        end
+                    </OnClick>
+                </Scripts>
+                <PushedTextOffset>
+                    <AbsDimension x="0" y="0"/>
+                </PushedTextOffset>
+            </Button>
+            <Button name="$parentSilverButton" multiplier="100">
+                <Size>
+                    <AbsDimension x="47" y="19"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="RIGHT" relativeTo="$parentCopperButton" relativePoint="LEFT">
+                        <Offset>
+                            <AbsDimension x="-4" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Layers>
+                    <Layer level="ARTWORK">
+                        <FontString name="$parentText" inherits="DQuestFont" justifyH="RIGHT">
+                            <Anchors>
+                                <Anchor point="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="-19" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                    <Layer level="OVERLAY">
+                        <Texture file="Interface\AddOns\DialogUI\src\assets\art\icons\Coin-Silver">
+                            <Size>
+                                <AbsDimension x="19" y="19"/>
+                            </Size>
+                            <Anchors>
+                                <Anchor point="RIGHT"/>
+                            </Anchors>
+                        </Texture>
+                    </Layer>
+                </Layers>
+                <Scripts>
+                    <OnClick>
+                        local parent = this:GetParent();
+                        local moneyType = parent.moneyType or "PLAYER";
+                        local moneyTypeInfo = MoneyTypeInfo[moneyType];
+                        if moneyTypeInfo and moneyTypeInfo.UpdateFunc then
+                            local currentMoney = moneyTypeInfo.UpdateFunc();
+                            OpenCoinPickupFrame(this.multiplier, currentMoney, parent);
+                            parent.hasPickup = 1;
+                        end
+                    </OnClick>
+                </Scripts>
+                <PushedTextOffset>
+                    <AbsDimension x="0" y="0"/>
+                </PushedTextOffset>
+            </Button>
+            <Button name="$parentGoldButton" multiplier="10000">
+                <Size>
+                    <AbsDimension x="47" y="19"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="RIGHT" relativeTo="$parentSilverButton" relativePoint="LEFT">
+                        <Offset>
+                            <AbsDimension x="-4" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Layers>
+                    <Layer level="ARTWORK">
+                        <FontString name="$parentText" inherits="DQuestFont" justifyH="RIGHT">
+                            <Anchors>
+                                <Anchor point="RIGHT">
+                                    <Offset>
+                                        <AbsDimension x="-19" y="0"/>
+                                    </Offset>
+                                </Anchor>
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                    <Layer level="OVERLAY">
+                        <Texture file="Interface\AddOns\DialogUI\src\assets\art\icons\Coin-Gold">
+                            <Size>
+                                <AbsDimension x="19" y="19"/>
+                            </Size>
+                            <Anchors>
+                                <Anchor point="RIGHT"/>
+                            </Anchors>
+                        </Texture>
+                    </Layer>
+                </Layers>
+                <Scripts>
+                    <OnClick>
+                        local parent = this:GetParent();
+                        local moneyType = parent.moneyType or "PLAYER";
+                        local moneyTypeInfo = MoneyTypeInfo[moneyType];
+                        if moneyTypeInfo and moneyTypeInfo.UpdateFunc then
+                            local currentMoney = moneyTypeInfo.UpdateFunc();
+                            OpenCoinPickupFrame(this.multiplier, currentMoney, parent);
+                            parent.hasPickup = 1;
+                        end
+                    </OnClick>
+                </Scripts>
+                <PushedTextOffset>
+                    <AbsDimension x="0" y="0"/>
+                </PushedTextOffset>
+            </Button>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                MoneyFrame_OnLoad();
+            </OnLoad>
+            <OnEvent>
+                MoneyFrame_OnEvent();
+            </OnEvent>
+            <OnShow>
+                DMoneyFrame_UpdateMoney();
+            </OnShow>
+            <OnHide>
+                if ( this.hasPickup == 1 ) then
+                    CoinPickupFrame:Hide();
+                    this.hasPickup = 0;
+                end
+            </OnHide>
+        </Scripts>
+    </Frame>
+</Ui>
