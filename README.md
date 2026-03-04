@@ -1,29 +1,29 @@
 # 📜 DialogUI Enhanced
 
-> **A beautiful, enhanced fork of the original DialogUI addon**
+> **Красивый, расширенный форк оригинального аддона DialogUI**
 
-**DialogUI Enhanced** is an improved fork of the original [DialogUI addon](https://github.com/Jslquintero/DialogUI) that transforms World of Warcraft's quest and gossip dialogs with a stunning parchment-themed interface. This fork adds powerful new features while maintaining the beautiful aesthetic that made the original so popular.
+**DialogUI Enhanced** — это улучшенный форк оригинального аддона [DialogUI](https://github.com/Jslquintero/DialogUI), который преобразует окна заданий и диалогов в World of Warcraft, добавляя им потрясающий тематический интерфейс в стиле пергамента. Эта версия добавляет мощные новые функции, сохраняя прекрасную эстетику, сделавшую оригинал таким популярным.
 
-## 🌟 What's New in This Fork
+## 🌟 Что нового в этом форке
 
-This enhanced version builds upon the original DialogUI foundation and adds:
+Эта улучшенная версия построена на фундаменте оригинального DialogUI и добавляет:
 
-- **🎯 Movable Windows** - Drag quest and gossip windows anywhere on screen
-- **💾 Persistent Positioning** - Window positions are saved between game sessions  
-- **⚙️ Advanced Configuration Panel** - Beautiful in-game settings window with:
-  - Scale adjustment (0.5x to 2.0x)
-  - Transparency control (10% to 100%)
-  - Font size scaling (0.5x to 2.0x)
-- **� Dynamic Camera System** - Smooth camera transitions during NPC interactions:
-  - Configurable distance and angle
-  - Individual controls for gossip, vendors, trainers, and quests
-  - Smooth transitions with customizable speed
-  - Multiple presets (Cinematic, Close, Normal, Wide)
-- **�🎨 Unified Parchment Theme** - All windows use consistent papiro aesthetic
-- **⌨️ ESC Key Support** - Press ESC or Decline to close quest windows properly
-- **🖼️ Enhanced Icon System** - Native gossip icons with proper fallback handling
+- **🎯 Перемещаемые окна** — перетаскивайте окна заданий и диалогов в любое место экрана
+- **💾 Сохранение позиций** — положения окон сохраняются между игровыми сессиями
+- **⚙️ Расширенная панель настройки** — красивое внутриигровое окно настроек с возможностью:
+  - Регулировки масштаба (от 0.5x до 2.0x)
+  - Настройки прозрачности (от 10% до 100%)
+  - Изменения масштаба шрифта (от 0.5x до 2.0x)
+- **🎥 Динамическая система камеры** — плавные переходы камеры при взаимодействии с NPC:
+  - Настраиваемое расстояние и угол
+  - Отдельные настройки для диалогов, торговцев, тренеров и заданий
+  - Плавные переходы с настраиваемой скоростью
+  - Несколько предустановок (Кинематографичный, Близко, Обычный, Широкий)
+- **📜🎨 Единая тема "пергамент"** — все окна используют единую стилистику папируса
+- **⌨️ Поддержка клавиши ESC** — нажмите ESC или "Отклонить" для правильного закрытия окон заданий
+- **🖼️ Улучшенная система иконок** — нативные иконки диалогов с правильной обработкой на случай их отсутствия
 
-## 📸 Gallery
+## 📸 Галерея
 
 <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
   <img src="https://raw.githubusercontent.com/Jslquintero/DialogUI/main/src/preview/Screenshot%20From%202025-06-18%2000-34-14.png" style="width: 30%; min-width: 200px;" />
@@ -36,154 +36,122 @@ This enhanced version builds upon the original DialogUI foundation and adds:
   <img src="https://raw.githubusercontent.com/Jslquintero/DialogUI/main/src/preview/Screenshot%20From%202025-06-18%2000-42-06.png" style="width: 30%; min-width: 200px;" />
 </div>
 
-## ⚡ Quick Start
+## ⚡ Быстрый старт
 
-1. **Install**: Extract to your `Interface/AddOns/` folder
-2. **Enable**: Activate "DialogUI" in your addon list
-3. **Configure**: Use `/dialogui` in chat to open settings
-4. **Enjoy**: Beautiful, movable quest and gossip windows!
+1. **Установка**: Распакуйте в папку `Interface/AddOns/`
+2. **Включение**: Активируйте "DialogUI" в списке аддонов
+3. **Настройка**: Используйте `/dialogui` в чате для открытия настроек
+4. **Наслаждение**: Пользуйтесь красивыми перемещаемыми окнами заданий и диалогов!
 
-## 🎮 Commands
+## 🎮 Команды
 
-| Command | Description |
+| Команда | Описание |
 |---------|-------------|
-| `/dialogui` | Open configuration window |
-| `/resetdialogs` | Reset all window positions |
-| `/debugdialogs` | Show debug information |
-| `/togglecamera` | Enable/disable dynamic camera |
-| `/testcamera` | Test camera positioning |
-| `/cameradebug` | Show camera and frame debug info |
-| `/camerapreset [name]` | Apply camera preset (cinematic, close, normal, wide) |
+| `/dialogui` | Открыть окно настроек |
+| `/resetdialogs` | Сбросить позиции всех окон |
+| `/debugdialogs` | Показать отладочную информацию |
+| `/togglecamera` | Включить/выключить динамическую камеру |
+| `/testcamera` | Протестировать позиционирование камеры |
+| `/cameradebug` | Показать отладочную информацию о камере и фреймах |
+| `/camerapreset [название]` | Применить предустановку камеры (cinematic, close, normal, wide) |
 
-## 🔧 Compatibility
+## 🔧 Совместимость
 
-- ✅ **Vanilla WoW** (1.12.1)
-- ✅ **Turtle WoW** (Custom client)
-- ✅ **Classic Era** servers
-- ✅ **WoW Wrath** (3.3.5)
-- ⚠️ Designed for English client (Spanish support can be added by editing gossip functions)
+- ✅ **WOW WOTLK** (3.3.5)
 
-## 🎨 Original Inspiration
+- ⚠️ Перемодифицирован для русскоязычного клиента
 
-This addon was inspired by [DialogueUI](https://www.curseforge.com/wow/addons/dialogueui) and uses enhanced Blizzard original code with native icon handling.
+## 🎨 Оригинальное вдохновение
 
-## 📋 About This Fork
+Этот аддон вдохновлен [DialogueUI](https://www.curseforge.com/wow/addons/dialogueui) и использует улучшенный оригинальный код Blizzard с нативной обработкой иконок.
 
-This is an **enhanced fork** of the original [DialogUI by Jslquintero](https://github.com/Jslquintero/DialogUI). The original author created an excellent foundation for learning WoW addon development. This fork aims to contribute new features and improvements back to the community while maintaining the beautiful parchment aesthetic that makes DialogUI special.
+## 📋 Об этом форке
 
-**Original Author**: [Jslquintero](https://github.com/Jslquintero)  
-**Fork Maintainer**: [Kasper]  
-**Original Repository**: https://github.com/Jslquintero/DialogUI
+Это **улучшенный форк** оригинального [DialogUI от Jslquintero](https://github.com/Jslquintero/DialogUI). Оригинальный автор создал отличную основу для изучения разработки аддонов WoW. Цель этого форка — внести новые функции и улучшения в проект, поддерживая сообщество, и сохранить прекрасную эстетику пергамента, которая делает DialogUI особенным.
 
-## 🐛 Reporting Issues
+**Оригинальный автор**: [Jslquintero](https://github.com/Jslquintero)  
+**Сопровождающий форка**: [Kolorado76]  
+**Оригинальный репозиторий**: https://github.com/Jslquintero/DialogUI
 
-## 🐛 Reporting Issues
+## 🐛 Сообщение о проблемах
 
-**Before reporting any issue:**
-1. Disable all other addons
-2. Keep only DialogUI active  
-3. Test if the problem persists
-4. If it does, please report it!
+**Перед сообщением о любой проблеме:**
+1. Отключите все остальные аддоны
+2. Оставьте активным только DialogUI
+3. Проверьте, сохраняется ли проблема
+4. Если да, пожалуйста, сообщите о ней!
 
-### How to Report
+### Как сообщить
 
-- **Original DialogUI Issues**: [Original Repository Issues](https://github.com/Jslquintero/DialogUI/issues/new)
-- **Enhanced Fork Issues**: [This Fork's Issues](https://github.com/jucsp/DialogUI/issues/new)
+- **Проблемы оригинального DialogUI**: [Раздел Issues оригинального репозитория](https://github.com/Jslquintero/DialogUI/issues/new)
+- **Проблемы этого форка**: [Раздел Issues этого форка](https://github.com/jucsp/DialogUI/issues/new)
 
-Please specify which version you're using and include any error messages or screenshots.
+Пожалуйста, укажите, какую версию вы используете, и приложите сообщения об ошибках или скриншоты.
 
-## 🎨 Customization
+## 🎨 Кастомизация
 
-Feel free to customize the look completely! Every image is in **TGA format** for easy editing.
+Не стесняйтесь полностью изменять внешний вид! Каждое изображение теперь в формате **TGA** для удобного редактирования.
 
-### 🖼️ Customize Icons
-Edit gossip icons at:
+### 🖼️ Изменение иконок
+Редактируйте иконки диалогов здесь:
 ```
 DialogUI/src/assets/art/icons/GossipIcons.xcf
 ```
 
-### 🎨 Customize Frame Style  
-Edit button styles and frame backgrounds at:
+### 🎨 Изменение стиля фреймов
+Редактируйте стили кнопок и фона здесь:
 ```
 DialogUI/src/assets/art/parchment/ParchmentLayout.xcf
 ```
 
-### 🛠️ How to Edit
+### 🛠️ Как редактировать
 
-1. **Add/Remove Icons**: All gossip icons are individual TGA files in `/src/assets/art/icons/`
-2. **Change Frame Background**: Edit the parchment textures and button styles
-3. **Export Process**: Use GIMP 3 with [Batcher plugin](https://kamilburda.github.io/batcher/) for quick TGA batch export
+1. **Добавление/Удаление иконок**: Все иконки диалогов — отдельные TGA-файлы в `/src/assets/art/icons/`
+2. **Изменение фона фреймов**: Отредактируйте текстуры пергамента и стили кнопок
+3. **Процесс экспорта**: Используйте GIMP 3 с плагином [Batcher](https://kamilburda.github.io/batcher/) для быстрого пакетного экспорта в TGA
 
-**Recommended Tools:**
-- **GIMP 3** with [Batcher plugin](https://kamilburda.github.io/batcher/) for batch TGA export
-- Any image editor that supports TGA format
+**Рекомендуемые инструменты:**
+- **GIMP 3** с плагином [Batcher](https://kamilburda.github.io/batcher/) для пакетного экспорта в TGA
+- Любой редактор изображений, поддерживающий формат TGA
 
-**File Format**: All images must be in **Truevision Graphics Adapter (TGA)** format to work properly in WoW.
-
----
-
-## 🌍 Español
-
-**DialogUI Enhanced** es una versión mejorada del addon original [DialogUI](https://github.com/Jslquintero/DialogUI) que transforma los diálogos de misiones y conversaciones de World of Warcraft con una hermosa interfaz temática de pergamino.
-
-### ✨ Nuevas Funciones
-
-- **Ventanas móviles**: Arrastra las ventanas donde quieras
-- **Posiciones persistentes**: Se guardan entre sesiones
-- **Panel de configuración avanzado**: Escala, transparencia y tamaño de fuente
-- **Sistema de cámara dinámica**: Transiciones suaves durante interacciones con NPCs
-- **Soporte para tecla ESC**: Cierra ventanas con ESC o Rechazar
-- **Tema unificado**: Todas las ventanas usan el mismo estilo de pergamino
-
-### 🎯 Comandos
-
-- `/dialogui` - Abrir ventana de configuración
-- `/resetdialogs` - Reiniciar posiciones de ventanas
-- `/debugdialogs` - Mostrar información de debug
-- `/togglecamera` - Activar/desactivar cámara dinámica
-- `/testcamera` - Probar posicionamiento de cámara
-- `/cameradebug` - Información de debug de cámara
-- `/camerapreset [nombre]` - Aplicar preset de cámara
-
-### 📝 Nota Importante
-
-El addon está optimizado para cliente en inglés. Para usarlo en español, edita las funciones de gossip en `gossip.frame.lua`.
+**Формат файлов**: Все изображения должны быть в формате **Truevision Graphics Adapter (TGA)**, чтобы корректно работать в WoW.
 
 ---
 
-## � TODO - Planned Improvements
+## � TODO - Планируемые улучшения
 
-### 🎥 Dynamic Camera System Enhancements
-- [ ] **Configurable Camera Presets**: Make each preset (Cinematic, Close, Normal, Wide) fully configurable by users
-- [ ] **Advanced Camera Integration**: Implement WoW's native SaveView() and SetView() functions for:
-  - Precise camera position saving (exact angle, distance, pitch, yaw)
-  - Perfect restoration using native WoW camera system
-  - Seamless integration with game's camera state management
-- [ ] **Enhanced Preset Management**: 
-  - Allow users to create custom presets beyond the 4 defaults
-  - Save/load preset configurations to/from saved variables
-  - Export/import preset configurations between characters
-- [ ] **Smooth Transition Improvements**:
-  - Better interpolation algorithms for camera movement
-  - Configurable transition timing and easing functions
-  - Respect player movement and combat state during transitions
+### 🎥 Улучшения динамической системы камеры
+- [ ] **Настраиваемые предустановки камеры**: Сделать каждую предустановку (Кинематографичная, Близко, Обычная, Широкая) полностью настраиваемой пользователями.
+- [ ] **Расширенная интеграция камеры**: Реализовать использование нативных функций WoW SaveView() и SetView() для:
+  - Точного сохранения позиции камеры (точный угол, расстояние, наклон, поворот)
+  - Идеального восстановления с использованием родной системы камеры WoW
+  - Бесшовной интеграции с системой управления состоянием камеры игры
+- [ ] **Расширенное управление предустановками**:
+  - Позволить пользователям создавать свои предустановки, помимо 4 стандартных
+  - Сохранять/загружать конфигурации предустановок в/из сохраненных переменных
+  - Экспортировать/импортировать конфигурации предустановок между персонажами
+- [ ] **Улучшение плавности переходов**:
+  - Улучшенные алгоритмы интерполяции для движения камеры
+  - Настраиваемое время перехода и функции сглаживания
+  - Учет состояния игрока (движение, бой) во время переходов
 
 ---
 
-## �📄 License
+## 📄 Лицензия
 
-This enhanced fork maintains the same spirit of learning and sharing as the original DialogUI project.
+Этот улучшенный форк сохраняет тот же дух обучения и обмена, что и оригинальный проект DialogUI.
 
-# ¡Perzonalizar!
+# Персонализация!
 
-Sientete libre de agregar/iconos o cambiar el fondo del panel completamente, cada imagen esta ahora en formato Truevision Graphics Adapter (TGA)
+Не стесняйтесь добавлять/изменять иконки или менять фон панели полностью. Теперь каждое изображение находится в формате Truevision Graphics Adapter (TGA).
 
-Recomiendo utilizar Gimp 3 con el plugin [Batcher](https://kamilburda.github.io/batcher/) para exportar rápidamente los archivos.
+Рекомендую использовать Gimp 3 с плагином [Batcher](https://kamilburda.github.io/batcher/) для быстрого экспорта файлов.
 
-Para cambiar los iconos de los dialogos puedes dirigirte a :
+Чтобы изменить иконки диалогов, перейдите по адресу:
 
 > DialogUI/src/assets/art/icons/GossipIcons.xcf
 
-Para cambiar el estilo de los botones puedes dirigirte a :
+Чтобы изменить стиль кнопок, перейдите по адресу:
 
+> DialogUI/src/assets/art/parchment/ParchmentLayout.xcf
 > DialogUI/src/assets/art/parchment/ParchmentLayout.xcf
