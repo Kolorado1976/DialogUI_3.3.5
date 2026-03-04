@@ -60,6 +60,7 @@ This enhanced version builds upon the original DialogUI foundation and adds:
 - ✅ **Vanilla WoW** (1.12.1)
 - ✅ **Turtle WoW** (Custom client)
 - ✅ **Classic Era** servers
+- ✅ **WoW Wrath** (3.3.5)
 - ⚠️ Designed for English client (Spanish support can be added by editing gossip functions)
 
 ## 🎨 Original Inspiration
