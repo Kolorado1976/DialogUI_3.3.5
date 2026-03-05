@@ -811,9 +811,13 @@ function DQuestFrameGreetingPanel_OnShow()
             if btn then btn:Hide(); end
         end
     else
+        -- ИСПРАВЛЕНО: Привязываем "Текущие задания" непосредственно к тексту приветствия
         DCurrentQuestsText:SetPoint("TOPLEFT", "DGreetingText", "BOTTOMLEFT", 0, -10);
         DCurrentQuestsText:Show();
-        DQuestTitleButton1:SetPoint("TOPLEFT", "DCurrentQuestsText", "BOTTOMLEFT", -10, -5);
+        
+        -- ИСПРАВЛЕНО: Привязываем первую кнопку непосредственно к тексту приветствия, а не к "Текущие задания"
+        -- Это поднимет кнопки вверх
+        DQuestTitleButton1:SetPoint("TOPLEFT", "DGreetingText", "BOTTOMLEFT", -10, -25);
         
         for i = 1, numActiveQuests, 1 do
             local questTitleButton = getglobal("DQuestTitleButton" .. i);

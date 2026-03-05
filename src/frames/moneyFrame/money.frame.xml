@@ -43,6 +43,12 @@
                     </Layer>
                 </Layers>
                 <Scripts>
+                    <OnLoad>
+                        -- Скрываем стандартную текстуру кнопки
+                        this:SetNormalTexture("");
+                        this:SetPushedTexture("");
+                        this:SetHighlightTexture("");
+                    </OnLoad>
                     <OnClick>
                         local parent = this:GetParent();
                         local moneyType = parent.moneyType or "PLAYER";
@@ -97,6 +103,12 @@
                     </Layer>
                 </Layers>
                 <Scripts>
+                    <OnLoad>
+                        -- Скрываем стандартную текстуру кнопки
+                        this:SetNormalTexture("");
+                        this:SetPushedTexture("");
+                        this:SetHighlightTexture("");
+                    </OnLoad>
                     <OnClick>
                         local parent = this:GetParent();
                         local moneyType = parent.moneyType or "PLAYER";
@@ -151,6 +163,12 @@
                     </Layer>
                 </Layers>
                 <Scripts>
+                    <OnLoad>
+                        -- Скрываем стандартную текстуру кнопки
+                        this:SetNormalTexture("");
+                        this:SetPushedTexture("");
+                        this:SetHighlightTexture("");
+                    </OnLoad>
                     <OnClick>
                         local parent = this:GetParent();
                         local moneyType = parent.moneyType or "PLAYER";

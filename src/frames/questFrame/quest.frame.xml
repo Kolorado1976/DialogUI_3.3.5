@@ -38,7 +38,7 @@
                             <Anchors>
                                 <Anchor point="TOPLEFT">
                                     <Offset>
-                                        <AbsDimension x="60" y="0" />
+                                        <AbsDimension x="60" y="16" />
                                     </Offset>
                                 </Anchor>
                             </Anchors>
@@ -471,7 +471,7 @@
                                             <Anchors>
                                                 <Anchor point="TOPLEFT" relativeTo="DQuestProgressRequiredItemsText" relativePoint="BOTTOMLEFT">
                                                     <Offset>
-                                                        <AbsDimension x="0" y="-25"/>
+                                                        <AbsDimension x="0" y="-45"/>
                                                     </Offset>
                                                 </Anchor>
                                             </Anchors>
@@ -483,7 +483,7 @@
                                         <Anchors>
                                             <Anchor point="LEFT" relativeTo="DQuestProgressRequiredMoneyText" relativePoint="RIGHT">
                                                 <Offset>
-                                                    <AbsDimension x="10" y="0"/>
+                                                    <AbsDimension x="30" y="0"/>
                                                 </Offset>
                                             </Anchor>
                                         </Anchors>
