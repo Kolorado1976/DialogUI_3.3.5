@@ -1,198 +1,236 @@
--- Dynamic Camera Module for DialogUI
--- Handles smooth camera transitions during NPC interactions
--- Compatible with WoW 3.3.5
+-- Модуль динамической камеры для DialogUI
+-- Обеспечивает плавные переходы камеры при взаимодействии с NPC
+-- Совместимо с WoW 3.3.5
+-- ИСПРАВЛЕНО: Теперь камера фокусируется на лицо NPC, а не в ноги
 
--- Initialize the camera module
+-- Инициализация модуля камеры
 DynamicCamera = {};
 DynamicCamera.isActive = false;
 DynamicCamera.originalDistance = nil;
 DynamicCamera.originalPitch = nil;
 DynamicCamera.originalYaw = nil;
+DynamicCamera.originalView = nil;  -- Сохраняем вид (1-5)
 DynamicCamera.transitionActive = false;
+DynamicCamera.initialized = false;
 
--- Default camera settings
+-- Настройки камеры по умолчанию
 DynamicCamera.config = {
     enabled = true,
-    interactionDistance = 8,      -- Camera distance when talking to NPC
-    interactionPitch = -0.3,      -- Camera pitch (up/down angle)
-    transitionSpeed = 2.0,        -- Speed of camera transitions (higher = faster)
-    enableForGossip = true,       -- Enable for gossip dialogs
-    enableForVendors = true,      -- Enable for vendor interactions
-    enableForTrainers = true,     -- Enable for trainer interactions
-    enableForQuests = true,       -- Enable for quest dialogs (now ON by default)
-    -- Preset system for WotLK 3.3.5
-    usePresetRestore = false,     -- Use custom preset instead of trying to restore original
-    presetView = 2,              -- Saved camera view (1=first person, 2=third person, etc.)
-    savedCameraYaw = nil,        -- Custom saved camera yaw
-    savedCameraPitch = nil,      -- Custom saved camera pitch  
-    savedCameraDistance = nil,   -- Custom saved camera distance
+    interactionDistance = 3,      -- УМЕНЬШЕНО: Ближе к NPC для face view
+    interactionPitch = -0.1,        -- ИЗМЕНЕНО: Почти горизонтально (лицо, а не ноги)
+    transitionSpeed = 2.0,        -- Скорость перехода камеры
+    enableForGossip = true,
+    enableForVendors = true,
+    enableForTrainers = true,
+    enableForQuests = true,
+    usePresetRestore = false,
+    presetView = 2,
+    savedCameraYaw = nil,
+    savedCameraPitch = nil,
+    savedCameraDistance = nil,
+    -- НОВЫЕ НАСТРОЙКИ для Face View
+    useFaceView = true,            -- Включить режим "лицом к NPC"
+    faceViewDistance = 2.5,      -- Дистанция для вида на лицо (очень близко)
+    useFirstPersonView = true,     -- Использовать вид от первого лица
 };
 
--- Save original camera position
+-- Сохранить исходную позицию камеры и вид
 function DynamicCamera:SaveOriginalPosition()
     if not self.isActive then
-        -- WoW 3.3.5: Используем GetCVar для получения дистанции камеры
-        local distance = 15; -- Default fallback
-        local pitch = 0; -- Default fallback
-        local yaw = 0; -- Default fallback
-        
-        -- В 3.3.5 используем CVars для получения настроек камеры
+        local distance = 15;
+        local pitch = 0;
+        local yaw = 0;
+        local view = 2;  -- По умолчанию вид от 3-го лица
+
         if GetCVar then
             local camDist = GetCVar("cameraDistanceMax");
             if camDist then
                 distance = tonumber(camDist) or 15;
             end
+            -- Сохраняем текущий вид (1-5)
+            local currentView = GetCVar("cameraView");
+            if currentView then
+                view = tonumber(currentView) or 2;
+            end
         end
-        
-        -- В 3.3.5 нет прямого доступа к pitch/yaw, используем значения по умолчанию
-        -- или сохраненные ранее значения
+
         if self.config.savedCameraPitch then
             pitch = self.config.savedCameraPitch;
         end
         if self.config.savedCameraYaw then
             yaw = self.config.savedCameraYaw;
         end
-        
+
         self.originalDistance = distance;
         self.originalPitch = pitch;
         self.originalYaw = yaw;
-        
-        -- Store in saved variables for persistence
+        self.originalView = view;
+
+        -- Сохраняем в SavedVariables
         if not DialogUI_SavedConfig then
             DialogUI_SavedConfig = {};
         end
         DialogUI_SavedConfig.originalCameraDistance = self.originalDistance;
         DialogUI_SavedConfig.originalCameraPitch = self.originalPitch;
         DialogUI_SavedConfig.originalCameraYaw = self.originalYaw;
+        DialogUI_SavedConfig.originalView = self.originalView;
     end
 end
 
--- Save current camera position as preset for restoration
-function DynamicCamera:SaveCameraPreset()
-    -- WoW 3.3.5: Используем GetCVar для получения текущей дистанции
-    local currentDistance = 15; -- Default fallback
-    local currentPitch = 0;
-    local currentYaw = 0;
-    
-    -- Получаем текущую дистанцию камеры через CVar
-    if GetCVar then
-        local maxDist = GetCVar("cameraDistanceMax");
-        if maxDist then
-            currentDistance = tonumber(maxDist) or 15;
-        end
-    end
-    
-    -- Сохраняем как preset для восстановления
-    self.config.usePresetRestore = true;
-    self.config.savedCameraDistance = currentDistance;
-    self.config.savedCameraPitch = currentPitch;
-    self.config.savedCameraYaw = currentYaw;
-    self.config.presetView = GetCVar and tonumber(GetCVar("cameraView")) or 2;
-    
-    -- Save configuration
-    self:SaveConfig();
-    
-    DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Posicion de camara guardada (Distancia: " .. string.format("%.1f", currentDistance) .. ")");
-end
-
--- Restore original camera position
-function DynamicCamera:RestoreOriginalPosition()
-    if self.originalDistance then
-        -- Use saved preset if available
-        if self.config.usePresetRestore and self.config.savedCameraDistance then
-            -- Restore to saved preset position
-            if SetCVar and self.config.savedCameraDistance then
-                SetCVar("cameraDistanceMax", tostring(self.config.savedCameraDistance));
-            end
-            
-            -- Restore view mode if available
-            if SetView and self.config.presetView then
-                SetView(self.config.presetView);
-            end
-            
-            -- Try to restore camera distance using zoom functions as backup
-            if CameraZoomOut and self.config.savedCameraDistance then
-                local targetDistance = self.config.savedCameraDistance;
-                if targetDistance > 10 then
-                    -- Zoom out for wider views
-                    for i = 1, 3 do
-                        CameraZoomOut(2.0);
-                    end
-                end
-            end
-        else
-            -- Default restore to third-person
-            if SetView then
-                SetView(2); -- Third person view
-            end
-            
-            -- Reset camera distance to reasonable default
-            if SetCVar then
-                SetCVar("cameraDistanceMax", "15");
-            end
-        end
-        
-        -- Clean up
-        self.isActive = false;
-        self.originalDistance = nil;
-        self.originalPitch = nil;
-        self.originalYaw = nil;
-    end
-end
-
--- Apply interaction camera position
+-- Применить позицию камеры для взаимодействия - ВЕРСИЯ FACE VIEW
 function DynamicCamera:ApplyInteractionPosition()
     if not self.config.enabled then
         return;
     end
-    
-    -- Only apply if not already active to avoid interference
+
     if self.isActive then
         return;
     end
-    
-    -- Don't interfere if quest frames are in transition or loading
-    if DQuestFrame and DQuestFrame:IsVisible() then
-        local alpha = DQuestFrame:GetAlpha();
-        if alpha < 1.0 then
-            -- Frame is still transitioning, wait a bit more
-            return;
-        end
-    end
-    
+
     self:SaveOriginalPosition();
-    
-    -- Calculate target camera position
-    local targetDistance = self.config.interactionDistance;
-    local targetPitch = self.config.interactionPitch;
-    local currentYaw = self.originalYaw;
-    
-    -- Apply camera immediately without transition
-    self:ApplyImmediateCamera(targetDistance, targetPitch, currentYaw);
+
+    -- НОВЫЙ ПОДХОД: Face View
+    if self.config.useFaceView then
+        self:ApplyFaceView();
+    else
+        -- Старый подход - просто приближение
+        self:ApplyImmediateCamera(self.config.interactionDistance, self.config.interactionPitch, self.originalYaw);
+    end
+
     self.isActive = true;
+
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Режим Face View активирован");
+    end
 end
 
--- Apply camera settings immediately without transitions
+-- НОВАЯ ФУНКЦИЯ: Применить вид "лицом к NPC"
+function DynamicCamera:ApplyFaceView()
+    if not self.config.useFaceView then
+        return;
+    end
+
+    -- Способ 1: Вид от первого лица + зум
+    if self.config.useFirstPersonView and SetView then
+        -- Сохраняем текущий вид перед переключением
+        if SaveView then
+            SaveView(5);  -- Сохраняем в слот 5 (обычно свободен)
+        end
+
+        -- Переключаемся на вид от первого лица
+        SetView(1);
+
+        -- Небольшая задержка для применения вида, затем зум
+        local zoomFrame = CreateFrame("Frame");
+        local elapsed = 0;
+        zoomFrame:SetScript("OnUpdate", function(self, delta)
+            elapsed = elapsed + delta;
+            if elapsed >= 0.05 then  -- Короткая задержка
+                -- Применяем дистанцию через CVar для вида от 1-го лица
+                if SetCVar then
+                    SetCVar("cameraDistanceMax", tostring(DynamicCamera.config.faceViewDistance));
+                end
+                -- Или используем зум
+                if CameraZoomIn then
+                    for i = 1, 10 do
+                        CameraZoomIn(1.0);
+                    end
+                end
+                zoomFrame:SetScript("OnUpdate", nil);
+                zoomFrame = nil;
+            end
+        end);
+
+    else
+        -- Способ 2: Обычный зум с коррекцией угла
+        -- Устанавливаем минимальную дистанцию
+        if SetCVar then
+            SetCVar("cameraDistanceMax", tostring(self.config.faceViewDistance));
+        end
+
+        -- Приближаем камеру через зум
+        if CameraZoomIn then
+            for i = 1, 15 do
+                CameraZoomIn(1.0);
+            end
+        end
+    end
+end
+
+-- Восстановить исходную позицию камеры
+function DynamicCamera:RestoreOriginalPosition()
+    if not self.originalDistance then
+        return;
+    end
+
+    -- Восстанавливаем вид от третьего лица ПЕРВЫМ ДЕЛОМ
+    if SetView then
+        if self.originalView and self.originalView ~= 1 then
+            SetView(self.originalView);
+        else
+            SetView(2);  -- По умолчанию вид от 3-го лица
+        end
+    end
+
+    -- Восстанавливаем дистанцию
+    if self.config.usePresetRestore and self.config.savedCameraDistance then
+        if SetCVar then
+            SetCVar("cameraDistanceMax", tostring(self.config.savedCameraDistance));
+        end
+
+        if CameraZoomOut and self.config.savedCameraDistance then
+            local targetDistance = self.config.savedCameraDistance;
+            if targetDistance > 10 then
+                for i = 1, 5 do
+                    CameraZoomOut(2.0);
+                end
+            end
+        end
+    else
+        -- Восстанавливаем оригинальную дистанцию
+        if SetCVar then
+            SetCVar("cameraDistanceMax", tostring(self.originalDistance));
+        end
+
+        -- Отдаляем камеру обратно
+        if CameraZoomOut and self.originalDistance then
+            local currentDist = tonumber(GetCVar("cameraDistanceMax")) or 2;
+            if self.originalDistance > currentDist then
+                for i = 1, math.ceil(self.originalDistance - currentDist) do
+                    CameraZoomOut(1.0);
+                end
+            end
+        end
+    end
+
+    -- Очистка
+    self.isActive = false;
+    self.originalDistance = nil;
+    self.originalPitch = nil;
+    self.originalYaw = nil;
+    self.originalView = nil;
+
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Позиция камеры восстановлена");
+    end
+end
+
+-- Применить настройки камеры немедленно (запасной метод)
 function DynamicCamera:ApplyImmediateCamera(distance, pitch, yaw)
-    -- WoW 3.3.5: Используем CameraZoomIn/CameraZoomOut или SetCVar
     if CameraZoomIn and CameraZoomOut then
-        -- Zoom to the target distance immediately
         local currentDist = tonumber(GetCVar("cameraDistanceMax")) or 15;
         local targetDist = distance or 8;
-        
+
         if currentDist > targetDist then
-            -- Need to zoom in
             for i = 1, math.ceil(currentDist - targetDist) do
                 CameraZoomIn(1);
             end
         elseif currentDist < targetDist then
-            -- Need to zoom out
             for i = 1, math.ceil(targetDist - currentDist) do
                 CameraZoomOut(1);
             end
         end
     elseif SetCVar then
-        -- Use CVars for immediate camera control
         if distance then
             SetCVar("cameraDistanceMax", tostring(distance));
             SetCVar("cameraDistanceMaxFactor", "1.0");
@@ -200,77 +238,9 @@ function DynamicCamera:ApplyImmediateCamera(distance, pitch, yaw)
     end
 end
 
--- Smooth camera transition
-function DynamicCamera:SmoothTransition(targetDistance, targetPitch, targetYaw, onComplete)
-    if self.transitionActive then
-        return; -- Avoid multiple transitions
-    end
-    
-    self.transitionActive = true;
-    
-    -- Use saved values instead of getting current values
-    local startDistance = self.originalDistance or 15;
-    local startPitch = self.originalPitch or 0;
-    local startYaw = self.originalYaw or 0;
-    
-    -- WoW 3.3.5: Используем CameraZoomIn/CameraZoomOut для плавного перехода
-    if CameraZoomIn and targetDistance < startDistance then
-        -- Use zoom for closer view
-        local steps = math.ceil(startDistance - targetDistance);
-        local currentStep = 0;
-        
-        local zoomFrame = CreateFrame("Frame");
-        zoomFrame:SetScript("OnUpdate", function(self, elapsed)
-            currentStep = currentStep + 1;
-            if currentStep <= steps then
-                CameraZoomIn(1.0);
-            else
-                zoomFrame:SetScript("OnUpdate", nil);
-                zoomFrame = nil;
-                DynamicCamera.transitionActive = false;
-                if onComplete then
-                    onComplete();
-                end
-            end
-        end);
-    elseif CameraZoomOut and targetDistance > startDistance then
-        -- Use zoom out for wider view
-        local steps = math.ceil(targetDistance - startDistance);
-        local currentStep = 0;
-        
-        local zoomFrame = CreateFrame("Frame");
-        zoomFrame:SetScript("OnUpdate", function(self, elapsed)
-            currentStep = currentStep + 1;
-            if currentStep <= steps then
-                CameraZoomOut(1.0);
-            else
-                zoomFrame:SetScript("OnUpdate", nil);
-                zoomFrame = nil;
-                DynamicCamera.transitionActive = false;
-                if onComplete then
-                    onComplete();
-                end
-            end
-        end);
-    elseif SetCVar then
-        -- Fallback: используем SetCVar для мгновенного изменения
-        SetCVar("cameraDistanceMax", tostring(targetDistance));
-        self.transitionActive = false;
-        if onComplete then
-            onComplete();
-        end
-    else
-        self.transitionActive = false;
-        if onComplete then
-            onComplete();
-        end
-    end
-end
-
--- Event handlers
+-- Обработчики событий
 function DynamicCamera:OnGossipShow()
     if self.config.enableForGossip then
-        -- Apply camera immediately without delay
         self:ApplyInteractionPosition();
     end
 end
@@ -306,13 +276,10 @@ function DynamicCamera:OnTrainerClosed()
 end
 
 function DynamicCamera:OnQuestDetail()
-    -- For quest frames, be very conservative to avoid interference
     if self.config.enableForQuests then
-        -- Don't activate camera if already active
-        if self.isActive then
-            return;
+        if not self.isActive then
+            self:ApplyInteractionPosition();
         end
-        self:ApplyInteractionPosition();
     end
 end
 
@@ -322,28 +289,31 @@ function DynamicCamera:OnQuestFinished()
     end
 end
 
--- Load saved camera configuration
+-- Загрузить сохраненную конфигурацию камеры
 function DynamicCamera:LoadConfig()
     if DialogUI_SavedConfig and DialogUI_SavedConfig.camera then
         local saved = DialogUI_SavedConfig.camera;
         self.config.enabled = saved.enabled ~= nil and saved.enabled or true;
-        self.config.interactionDistance = saved.interactionDistance or 8;
-        self.config.interactionPitch = saved.interactionPitch or -0.3;
+        self.config.interactionDistance = saved.interactionDistance or 3;
+        self.config.interactionPitch = saved.interactionPitch or -0.1;
         self.config.transitionSpeed = saved.transitionSpeed or 2.0;
         self.config.enableForGossip = saved.enableForGossip ~= nil and saved.enableForGossip or true;
         self.config.enableForVendors = saved.enableForVendors ~= nil and saved.enableForVendors or true;
         self.config.enableForTrainers = saved.enableForTrainers ~= nil and saved.enableForTrainers or true;
         self.config.enableForQuests = saved.enableForQuests ~= nil and saved.enableForQuests or true;
-        -- Load preset settings
         self.config.usePresetRestore = saved.usePresetRestore or false;
         self.config.presetView = saved.presetView or 2;
         self.config.savedCameraYaw = saved.savedCameraYaw;
         self.config.savedCameraPitch = saved.savedCameraPitch;
         self.config.savedCameraDistance = saved.savedCameraDistance;
+        -- Загружаем новые настройки Face View
+        self.config.useFaceView = saved.useFaceView ~= nil and saved.useFaceView or true;
+        self.config.faceViewDistance = saved.faceViewDistance or 2.5;
+        self.config.useFirstPersonView = saved.useFirstPersonView ~= nil and saved.useFirstPersonView or true;
     end
 end
 
--- Save camera configuration
+-- Сохранить конфигурацию камеры
 function DynamicCamera:SaveConfig()
     if not DialogUI_SavedConfig then
         DialogUI_SavedConfig = {};
@@ -357,21 +327,26 @@ function DynamicCamera:SaveConfig()
         enableForVendors = self.config.enableForVendors,
         enableForTrainers = self.config.enableForTrainers,
         enableForQuests = self.config.enableForQuests,
-        -- Save preset settings
         usePresetRestore = self.config.usePresetRestore,
         presetView = self.config.presetView,
         savedCameraYaw = self.config.savedCameraYaw,
         savedCameraPitch = self.config.savedCameraPitch,
         savedCameraDistance = self.config.savedCameraDistance,
+        -- Сохраняем новые настройки
+        useFaceView = self.config.useFaceView,
+        faceViewDistance = self.config.faceViewDistance,
+        useFirstPersonView = self.config.useFirstPersonView,
     };
 end
 
--- Initialize camera module
+-- Инициализация модуля камеры
 function DynamicCamera:Initialize()
-    -- Load configuration
+    if self.initialized then
+        return;
+    end
+
     self:LoadConfig();
-    
-    -- Create event frame
+
     local eventFrame = CreateFrame("Frame", "DynamicCameraEventFrame");
     eventFrame:RegisterEvent("GOSSIP_SHOW");
     eventFrame:RegisterEvent("GOSSIP_CLOSED");
@@ -402,203 +377,103 @@ function DynamicCamera:Initialize()
             DynamicCamera:OnQuestFinished();
         end
     end);
+
+    self.initialized = true;
+
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Динамическая камера инициализирована (режим Face View)");
+    end
 end
 
--- Slash commands for camera module
+-- Слэш-команды
 SlashCmdList["DYNAMICCAMERA_TOGGLE"] = function()
     DynamicCamera.config.enabled = not DynamicCamera.config.enabled;
     DynamicCamera:SaveConfig();
-    
-    local status = DynamicCamera.config.enabled and "enabled" or "disabled";
-    DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Dynamic Camera " .. status);
+    local status = DynamicCamera.config.enabled and "включена" or "отключена";
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Динамическая камера " .. status);
+    end
 end;
 SLASH_DYNAMICCAMERA_TOGGLE1 = "/togglecamera";
 SLASH_DYNAMICCAMERA_TOGGLE2 = "/dcamera";
 
--- Test command for camera positioning
 SlashCmdList["DYNAMICCAMERA_TEST"] = function()
     if DynamicCamera.isActive then
         DynamicCamera:RestoreOriginalPosition();
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Camera restored");
+        if DEFAULT_CHAT_FRAME then
+            DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Позиция камеры восстановлена");
+        end
     else
         DynamicCamera:ApplyInteractionPosition();
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Camera applied");
+        if DEFAULT_CHAT_FRAME then
+            DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Режим Face View применен");
+        end
     end
 end;
 SLASH_DYNAMICCAMERA_TEST1 = "/testcamera";
 
--- Additional debug command for quest frame compatibility
+SlashCmdList["DYNAMICCAMERA_FACEVIEW"] = function()
+    DynamicCamera.config.useFaceView = not DynamicCamera.config.useFaceView;
+    DynamicCamera:SaveConfig();
+    local status = DynamicCamera.config.useFaceView and "включен" or "отключен";
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Режим Face View " .. status);
+    end
+end;
+SLASH_DYNAMICCAMERA_FACEVIEW1 = "/faceview";
+
 SlashCmdList["DYNAMICCAMERA_QUESTDEBUG"] = function()
-    local questVisible = DQuestFrame and DQuestFrame:IsVisible() and "YES" or "NO";
-    local questAlpha = DQuestFrame and DQuestFrame:GetAlpha() or "N/A";
-    local cameraActive = DynamicCamera.isActive and "YES" or "NO";
-    
-    DEFAULT_CHAT_FRAME:AddMessage("DialogUI: QuestFrame Visible=" .. questVisible .. ", Alpha=" .. questAlpha .. ", Camera Active=" .. cameraActive);
+    local questVisible = DQuestFrame and DQuestFrame:IsVisible() and "ДА" or "НЕТ";
+    local cameraActive = DynamicCamera.isActive and "ДА" or "НЕТ";
+    local cameraEnabled = DynamicCamera.config.enabled and "ДА" or "НЕТ";
+    local faceView = DynamicCamera.config.useFaceView and "ДА" or "НЕТ";
+
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI Отладка камеры:");
+        DEFAULT_CHAT_FRAME:AddMessage("  Окно квестов видимо = " .. questVisible);
+        DEFAULT_CHAT_FRAME:AddMessage("  Камера активна = " .. cameraActive .. ", Включена = " .. cameraEnabled);
+        DEFAULT_CHAT_FRAME:AddMessage("  Face View = " .. faceView .. ", Дистанция = " .. DynamicCamera.config.faceViewDistance);
+    end
 end;
 SLASH_DYNAMICCAMERA_QUESTDEBUG1 = "/cameradebug";
 
--- Command to save current camera position as preset
 SlashCmdList["DYNAMICCAMERA_SAVEPRESET"] = function()
     DynamicCamera:SaveCameraPreset();
 end;
 SLASH_DYNAMICCAMERA_SAVEPRESET1 = "/savecamerapreset";
-SLASH_DYNAMICCAMERA_SAVEPRESET2 = "/savepreset";
 
--- Apply camera preset
 function DynamicCamera:ApplyPreset(presetName)
     if presetName == "cinematic" then
-        self.config.interactionDistance = 6;
-        self.config.interactionPitch = -0.5;
+        self.config.faceViewDistance = 2.0;
+        self.config.useFaceView = true;
     elseif presetName == "close" then
-        self.config.interactionDistance = 4;
-        self.config.interactionPitch = -0.2;
+        self.config.faceViewDistance = 1.5;
+        self.config.useFaceView = true;
     elseif presetName == "normal" then
-        self.config.interactionDistance = 8;
-        self.config.interactionPitch = -0.3;
+        self.config.faceViewDistance = 2.5;
+        self.config.useFaceView = true;
     elseif presetName == "wide" then
-        self.config.interactionDistance = 12;
-        self.config.interactionPitch = -0.1;
+        self.config.useFaceView = false;
+        self.config.interactionDistance = 8;
     end
-    
+
     self:SaveConfig();
-    DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Camera preset '" .. presetName .. "' applied");
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Пресет камеры '" .. presetName .. "' применен");
+    end
 end
 
--- Preset commands
 SlashCmdList["CAMERA_PRESET"] = function(msg)
     local preset = string.lower(msg or "");
     if preset == "cinematic" or preset == "close" or preset == "normal" or preset == "wide" then
         DynamicCamera:ApplyPreset(preset);
     else
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Available presets: cinematic, close, normal, wide");
-        DEFAULT_CHAT_FRAME:AddMessage("Usage: /camerapreset [preset_name]");
+        if DEFAULT_CHAT_FRAME then
+            DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Доступные пресеты: cinematic, close, normal, wide");
+        end
     end
 end;
 SLASH_CAMERA_PRESET1 = "/camerapreset";
 
--- Configuration UI Integration
-function DynamicCamera:AddConfigControls()
-    local parent = DConfigScrollChild or DConfigFrame;
-    if not parent then
-        return;
-    end
-    
-    -- Verify DConfigFontLabel exists
-    if not DConfigFontLabel then
-        return;
-    end
-    
-    -- Create camera section title
-    local cameraTitle = parent:CreateFontString("DCameraSectionTitle", "OVERLAY", "DQuestButtonTitleGossip");
-    cameraTitle:SetPoint("TOP", DConfigFontLabel, "BOTTOM", 0, -35);
-    cameraTitle:SetText("Configuracion de Camara");
-    cameraTitle:SetJustifyH("LEFT");
-    SetFontColor(cameraTitle, "DarkBrown");
-    
-    -- Camera enabled checkbox
-    local cameraEnabledCheckbox = CreateFrame("CheckButton", "DCameraEnabledCheckbox", parent, "UICheckButtonTemplate");
-    cameraEnabledCheckbox:SetPoint("TOPLEFT", cameraTitle, "BOTTOMLEFT", 0, -10);
-    cameraEnabledCheckbox:SetScale(0.8);
-    cameraEnabledCheckbox:SetChecked(self.config.enabled);
-    
-    local cameraEnabledLabel = parent:CreateFontString("DCameraEnabledLabel", "OVERLAY", "DQuestButtonTitleGossip");
-    cameraEnabledLabel:SetPoint("LEFT", cameraEnabledCheckbox, "RIGHT", 5, 0);
-    cameraEnabledLabel:SetText("Activar Camara Dinamica");
-    SetFontColor(cameraEnabledLabel, "DarkBrown");
-    
-    cameraEnabledCheckbox:SetScript("OnClick", function()
-        DynamicCamera.config.enabled = cameraEnabledCheckbox:GetChecked();
-        DynamicCamera:SaveConfig();
-        
-        local status = DynamicCamera.config.enabled and "activada" or "desactivada";
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Camara Dinamica " .. status);
-    end);
-    
-    -- Settings display
-    local settingsRow = parent:CreateFontString("DCameraSettingsLabel", "OVERLAY", "DQuestButtonTitleGossip");
-    settingsRow:SetPoint("TOPLEFT", cameraEnabledCheckbox, "BOTTOMLEFT", 0, -20);
-    settingsRow:SetText("Distancia: " .. string.format("%.1f", self.config.interactionDistance) .. 
-                       " | Angulo: " .. string.format("%.1f", self.config.interactionPitch) .. 
-                       " | Velocidad: " .. string.format("%.1f", self.config.transitionSpeed));
-    SetFontColor(settingsRow, "DarkBrown");
-    
-    -- Store reference for updates
-    self.settingsLabel = settingsRow;
-    
-    -- Interaction types
-    local typesLabel = parent:CreateFontString("DInteractionTypesLabel", "OVERLAY", "DQuestButtonTitleGossip");
-    typesLabel:SetPoint("TOPLEFT", settingsRow, "BOTTOMLEFT", 0, -15);
-    typesLabel:SetText("Activar para: ");
-    SetFontColor(typesLabel, "DarkBrown");
-    
-    -- Horizontal layout for checkboxes
-    local checkboxData = {
-        {name = "Comercio", config = "enableForGossip", xOffset = 0},
-        {name = "Vendedores", config = "enableForVendors", xOffset = 80},
-        {name = "Entrenadores", config = "enableForTrainers", xOffset = 160},
-        {name = "Misiones", config = "enableForQuests", xOffset = 240}
-    };
-    
-    for i, data in ipairs(checkboxData) do
-        local checkbox = CreateFrame("CheckButton", "DCamera" .. data.name .. "Checkbox", parent, "UICheckButtonTemplate");
-        checkbox:SetPoint("TOPLEFT", typesLabel, "BOTTOMLEFT", data.xOffset, -10);
-        checkbox:SetScale(0.7);
-        checkbox:SetChecked(self.config[data.config]);
-        
-        local label = parent:CreateFontString("DCamera" .. data.name .. "Label", "OVERLAY", "DQuestButtonTitleGossip");
-        label:SetPoint("LEFT", checkbox, "RIGHT", 2, 0);
-        label:SetText(data.name);
-        SetFontColor(label, "DarkBrown");
-        
-        checkbox:SetScript("OnClick", function()
-            DynamicCamera.config[data.config] = checkbox:GetChecked();
-            DynamicCamera:SaveConfig();
-        end);
-    end
-    
-    -- Quick preset section
-    local presetsLabel = parent:CreateFontString("DCameraPresetsLabel", "OVERLAY", "DQuestButtonTitleGossip");
-    presetsLabel:SetPoint("TOPLEFT", typesLabel, "BOTTOMLEFT", 0, -45);
-    presetsLabel:SetText("Vistas Rapidas:");
-    SetFontColor(presetsLabel, "DarkBrown");
-    
-    -- Save Current Camera Preset button
-    local savePresetBtn = CreateFrame("Button", "DSavePresetButton", parent, "DUIPanelButtonTemplate");
-    savePresetBtn:SetPoint("TOPLEFT", presetsLabel, "BOTTOMLEFT", 0, -10);
-    savePresetBtn:SetWidth(150);
-    savePresetBtn:SetHeight(25);
-    savePresetBtn:SetText("Guardar Vista Actual");
-    savePresetBtn:SetScript("OnClick", function()
-        DynamicCamera:SaveCameraPreset();
-    end);
-    
-    -- Preset info
-    local presetInfo = parent:CreateFontString("DCameraPresetInfo", "OVERLAY", "DQuestButtonTitleGossip");
-    presetInfo:SetPoint("TOPLEFT", savePresetBtn, "BOTTOMLEFT", 0, -5);
-    presetInfo:SetWidth(300);
-    presetInfo:SetJustifyH("LEFT");
-    presetInfo:SetText("Ajusta tu camara como quieres que quede despues de hablar con NPCs, luego guarda la vista.");
-    SetFontColor(presetInfo, "LightBrown");
-    
-    -- Preset buttons
-    local presets = {"Cinematic", "Close", "Normal", "Wide"};
-    local presetNames = {"Cinematica", "Cerca", "Normal", "Amplia"};
-    for i, presetName in ipairs(presets) do
-        local button = CreateFrame("Button", "DCamera" .. presetName .. "Button", parent, "DUIPanelButtonTemplate");
-        button:SetText(presetNames[i]);
-        button:SetWidth(80);
-        button:SetHeight(22);
-        
-        -- Position buttons in a row
-        button:SetPoint("TOPLEFT", presetInfo, "BOTTOMLEFT", (i-1) * 85, -10);
-        button:SetScript("OnClick", function()
-            DynamicCamera:ApplyPreset(string.lower(presetName));
-            -- Update display
-            if DynamicCamera.settingsLabel then
-                DynamicCamera.settingsLabel:SetText("Distancia: " .. string.format("%.1f", DynamicCamera.config.interactionDistance) .. 
-                                                   " | Angulo: " .. string.format("%.1f", DynamicCamera.config.interactionPitch) .. 
-                                                   " | Velocidad: " .. string.format("%.1f", DynamicCamera.config.transitionSpeed));
-            end
-        end);
-    end
-end
+-- Автоинициализация при загрузке
+DynamicCamera:Initialize();

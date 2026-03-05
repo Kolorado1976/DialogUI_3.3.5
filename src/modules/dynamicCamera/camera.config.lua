@@ -1,181 +1,275 @@
--- Dynamic Camera Configuration Integration
--- Extends the DialogUI config window with camera controls
--- Compatible with WoW 3.3.5
+-- Динамическая интеграция конфигурации камеры
+-- Расширяет окно конфигурации DialogUI элементами управления камерой
+-- Совместимо с WoW 3.3.5
+-- ИСПРАВЛЕНО: Добавлены настройки Face View (лицом к NPC)
+-- ИСПРАВЛЕНО: Удалены дублирующиеся чекбоксы
+-- ИСПРАВЛЕНО: Добавлена возможность отключения дебаг-сообщений
 
--- Debug message to confirm file is loading
-DEFAULT_CHAT_FRAME:AddMessage("DialogUI: camera.config.lua cargando...");
+-- Глобальная переменная для управления дебаг-сообщениями
+-- Установите в false, чтобы отключить все дебаг-сообщения
+DialogUI_DebugEnabled = false;
 
--- Add camera controls to the config window
-function DynamicCamera:AddConfigControls()
-    DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Intentando agregar controles de camara...");
-    
-    local parent = DConfigScrollChild or DConfigFrame;
-    if not parent then
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: ERROR - No se encontro DConfigScrollChild o DConfigFrame");
-        return; -- Config frame not available yet
+-- Вспомогательная функция для вывода дебаг-сообщений
+function DialogUI_DebugMessage(message)
+    if DialogUI_DebugEnabled and DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage(message);
     end
-    
-    DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Parent encontrado: " .. (parent:GetName() or "unknown"));
-    
-    -- Verify DConfigFontLabel exists
-    if not DConfigFontLabel then
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: ERROR - DConfigFontLabel no existe");
+end
+
+-- Отладочное сообщение для подтверждения загрузки файла
+DialogUI_DebugMessage("DialogUI: camera.config.lua загружается...");
+
+-- Добавить элементы управления камерой в окно конфигурации
+function DynamicCamera:AddConfigControls()
+    DialogUI_DebugMessage("DialogUI: Попытка добавить элементы управления камерой...");
+
+    -- ИСПРАВЛЕНО: Используем getglobal для безопасного получения фреймов
+    local parent = getglobal("DConfigScrollChild") or getglobal("DConfigFrame");
+    if not parent then
+        DialogUI_DebugMessage("DialogUI: ОШИБКА - Не найден DConfigScrollChild или DConfigFrame");
         return;
     end
-    
-    DEFAULT_CHAT_FRAME:AddMessage("DialogUI: DConfigFontLabel encontrado, creando seccion de camara...");
-    
-    -- Create camera section title
+
+    DialogUI_DebugMessage("DialogUI: Родительский элемент найден: " .. (parent:GetName() or "неизвестно"));
+
+    -- Проверяем существование DConfigFontLabel
+    local fontLabel = getglobal("DConfigFontLabel");
+    if not fontLabel then
+        DialogUI_DebugMessage("DialogUI: ОШИБКА - DConfigFontLabel не существует");
+        return;
+    end
+
+    DialogUI_DebugMessage("DialogUI: DConfigFontLabel найден, создаем раздел камеры...");
+
+    -- Проверяем, существует ли уже раздел камеры (избегаем дубликатов)
+    if getglobal("DCameraSectionTitle") then
+        self:UpdateConfigControls();
+        return;
+    end
+
+    -- Создаем заголовок раздела камеры
     local cameraTitle = parent:CreateFontString("DCameraSectionTitle", "OVERLAY", "DQuestButtonTitleGossip");
-    cameraTitle:SetPoint("TOP", DConfigFontLabel, "BOTTOM", 0, -35);
-    cameraTitle:SetText("Configuracion de Camara");
+    cameraTitle:SetPoint("TOPLEFT", fontLabel, "BOTTOMLEFT", 0, -35);
+    cameraTitle:SetText("Настройки Камеры");
     cameraTitle:SetJustifyH("LEFT");
-    SetFontColor(cameraTitle, "DarkBrown");
-    
-    -- Camera enabled checkbox
+    if SetFontColor then
+        SetFontColor(cameraTitle, "DarkBrown");
+    end
+
+    -- Флажок включения камеры
     local cameraEnabledCheckbox = CreateFrame("CheckButton", "DCameraEnabledCheckbox", parent, "UICheckButtonTemplate");
-    cameraEnabledCheckbox:SetPoint("TOPLEFT", cameraTitle, "BOTTOMLEFT", 0, -10);
+    cameraEnabledCheckbox:SetPoint("TOPLEFT", cameraTitle, "BOTTOMLEFT", 0, -15);
     cameraEnabledCheckbox:SetScale(0.8);
-    cameraEnabledCheckbox:SetChecked(DynamicCamera.config.enabled);
-    
+    cameraEnabledCheckbox:SetChecked(self.config.enabled);
+
     local cameraEnabledLabel = parent:CreateFontString("DCameraEnabledLabel", "OVERLAY", "DQuestButtonTitleGossip");
     cameraEnabledLabel:SetPoint("LEFT", cameraEnabledCheckbox, "RIGHT", 5, 0);
-    cameraEnabledLabel:SetText("Activar Camara Dinamica");
-    SetFontColor(cameraEnabledLabel, "DarkBrown");
-    
+    cameraEnabledLabel:SetText("Включить Динамическую Камеру");
+    if SetFontColor then
+        SetFontColor(cameraEnabledLabel, "DarkBrown");
+    end
+
     cameraEnabledCheckbox:SetScript("OnClick", function()
         DynamicCamera.config.enabled = cameraEnabledCheckbox:GetChecked();
         DynamicCamera:SaveConfig();
-        
-        local status = DynamicCamera.config.enabled and "activada" or "desactivada";
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Camara Dinamica " .. status);
+
+        local status = DynamicCamera.config.enabled and "включена" or "отключена";
+        DialogUI_DebugMessage("DialogUI: Динамическая Камера " .. status);
     end);
-    
-    -- Settings display
+
+    -- Флажок Face View
+    local faceViewCheckbox = CreateFrame("CheckButton", "DCameraFaceViewCheckbox", parent, "UICheckButtonTemplate");
+    faceViewCheckbox:SetPoint("TOPLEFT", cameraEnabledCheckbox, "BOTTOMLEFT", 0, -5);
+    faceViewCheckbox:SetScale(0.8);
+    faceViewCheckbox:SetChecked(self.config.useFaceView);
+
+    local faceViewLabel = parent:CreateFontString("DCameraFaceViewLabel", "OVERLAY", "DQuestButtonTitleGossip");
+    faceViewLabel:SetPoint("LEFT", faceViewCheckbox, "RIGHT", 5, 0);
+    faceViewLabel:SetText("Режим Face View (лицом к NPC)");
+    if SetFontColor then
+        SetFontColor(faceViewLabel, "DarkBrown");
+    end
+
+    faceViewCheckbox:SetScript("OnClick", function()
+        DynamicCamera.config.useFaceView = faceViewCheckbox:GetChecked();
+        DynamicCamera:SaveConfig();
+
+        local status = DynamicCamera.config.useFaceView and "включен" or "отключен";
+        DialogUI_DebugMessage("DialogUI: Face View " .. status);
+    end);
+
+    -- Отображение настроек
     local settingsRow = parent:CreateFontString("DCameraSettingsLabel", "OVERLAY", "DQuestButtonTitleGossip");
-    settingsRow:SetPoint("TOPLEFT", cameraEnabledCheckbox, "BOTTOMLEFT", 0, -20);
-    settingsRow:SetText("Distancia: " .. string.format("%.1f", DynamicCamera.config.interactionDistance) .. 
-                       " | Angulo: " .. string.format("%.1f", DynamicCamera.config.interactionPitch) .. 
-                       " | Velocidad: " .. string.format("%.1f", DynamicCamera.config.transitionSpeed));
-    SetFontColor(settingsRow, "DarkBrown");
-    
-    -- Store reference for updates
-    DynamicCamera.settingsLabel = settingsRow;
-    
-    -- Interaction types
+    settingsRow:SetPoint("TOPLEFT", faceViewCheckbox, "BOTTOMLEFT", 0, -25);
+    settingsRow:SetText("Дистанция: " .. string.format("%.1f", self.config.faceViewDistance) .. 
+                       " | Режим: " .. (self.config.useFaceView and "Лицом" or "Обычный"));
+    if SetFontColor then
+        SetFontColor(settingsRow, "DarkBrown");
+    end
+
+    -- Сохраняем ссылку для обновлений
+    self.settingsLabel = settingsRow;
+
+    -- Типы взаимодействий
     local typesLabel = parent:CreateFontString("DInteractionTypesLabel", "OVERLAY", "DQuestButtonTitleGossip");
-    typesLabel:SetPoint("TOPLEFT", settingsRow, "BOTTOMLEFT", 0, -15);
-    typesLabel:SetText("Activar para: ");
-    SetFontColor(typesLabel, "DarkBrown");
-    
-    -- Horizontal layout for checkboxes
+    typesLabel:SetPoint("TOPLEFT", settingsRow, "BOTTOMLEFT", 0, -25);
+    typesLabel:SetText("Включить для: ");
+    if SetFontColor then
+        SetFontColor(typesLabel, "DarkBrown");
+    end
+
+    -- ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ ЦИКЛ для чекбоксов
     local checkboxData = {
-        {name = "Comercio", config = "enableForGossip", xOffset = 0},
-        {name = "Vendedores", config = "enableForVendors", xOffset = 80},
-        {name = "Entrenadores", config = "enableForTrainers", xOffset = 160},
-        {name = "Misiones", config = "enableForQuests", xOffset = 240}
+        {name = "Разговоры", config = "enableForGossip"},
+        {name = "Торговцы", config = "enableForVendors"},
+        {name = "Тренеры", config = "enableForTrainers"},
+        {name = "Квесты", config = "enableForQuests"}
     };
-    
+
+    -- Создаем чекбоксы вертикально
     for i, data in ipairs(checkboxData) do
         local checkbox = CreateFrame("CheckButton", "DCamera" .. data.name .. "Checkbox", parent, "UICheckButtonTemplate");
-        checkbox:SetPoint("TOPLEFT", typesLabel, "BOTTOMLEFT", data.xOffset, -10);
+        
+        -- Вертикальное расположение (каждый ниже предыдущего)
+        checkbox:SetPoint("TOPLEFT", typesLabel, "BOTTOMLEFT", 0, -15 - ((i-1) * 25));
         checkbox:SetScale(0.7);
-        checkbox:SetChecked(DynamicCamera.config[data.config]);
+        checkbox:SetChecked(self.config[data.config]);
         
         local label = parent:CreateFontString("DCamera" .. data.name .. "Label", "OVERLAY", "DQuestButtonTitleGossip");
-        label:SetPoint("LEFT", checkbox, "RIGHT", 2, 0);
+        label:SetPoint("LEFT", checkbox, "RIGHT", 5, 0);
         label:SetText(data.name);
-        SetFontColor(label, "DarkBrown");
+        if SetFontColor then
+            SetFontColor(label, "DarkBrown");
+        end
         
         checkbox:SetScript("OnClick", function()
             DynamicCamera.config[data.config] = checkbox:GetChecked();
             DynamicCamera:SaveConfig();
         end);
     end
-    
-    -- Quick preset section
+
+    -- Раздел быстрых пресетов
     local presetsLabel = parent:CreateFontString("DCameraPresetsLabel", "OVERLAY", "DQuestButtonTitleGossip");
-    presetsLabel:SetPoint("TOPLEFT", typesLabel, "BOTTOMLEFT", 0, -45);
-    presetsLabel:SetText("Vistas Rapidas:");
-    SetFontColor(presetsLabel, "DarkBrown");
-    
-    -- Save Current Camera Preset button
+    presetsLabel:SetPoint("TOPLEFT", typesLabel, "BOTTOMLEFT", 0, -140);
+    presetsLabel:SetText("Быстрая настройка (Face View):");
+    if SetFontColor then
+        SetFontColor(presetsLabel, "DarkBrown");
+    end
+
+    -- Кнопка сохранения текущего пресета камеры
     local savePresetBtn = CreateFrame("Button", "DSavePresetButton", parent, "DUIPanelButtonTemplate");
     savePresetBtn:SetPoint("TOPLEFT", presetsLabel, "BOTTOMLEFT", 0, -10);
     savePresetBtn:SetWidth(150);
     savePresetBtn:SetHeight(25);
-    savePresetBtn:SetText("Guardar Vista Actual");
+    savePresetBtn:SetText("Сохранить Текущий Вид");
     savePresetBtn:SetScript("OnClick", function()
         DynamicCamera:SaveCameraPreset();
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Vista actual guardada como preset personalizado");
+        DialogUI_DebugMessage("DialogUI: Текущий вид сохранен как пользовательский пресет");
     end);
-    
-    -- Preset info
+
+    -- Информация о пресете
     local presetInfo = parent:CreateFontString("DCameraPresetInfo", "OVERLAY", "DQuestButtonTitleGossip");
-    presetInfo:SetPoint("TOPLEFT", savePresetBtn, "BOTTOMLEFT", 0, -5);
+    presetInfo:SetPoint("TOPLEFT", savePresetBtn, "BOTTOMLEFT", 0, -10);
     presetInfo:SetWidth(300);
     presetInfo:SetJustifyH("LEFT");
-    presetInfo:SetText("Ajusta tu camara como quieres que quede despues de hablar con NPCs, luego guarda la vista.");
-    SetFontColor(presetInfo, "LightBrown");
-    
-    -- Preset buttons
+    presetInfo:SetText("Настройте камеру так, как вы хотите, чтобы она выглядела после разговора с NPC, затем сохраните вид.");
+    if SetFontColor then
+        SetFontColor(presetInfo, "LightBrown");
+    end
+
+    -- Кнопки пресетов
     local presets = {"Cinematic", "Close", "Normal", "Wide"};
-    local presetNames = {"Cinematica", "Cerca", "Normal", "Amplia"};
+    local presetNames = {"Кинематогр.", "Близко", "Обычный", "Широкий"};
     for i, presetName in ipairs(presets) do
         local button = CreateFrame("Button", "DCamera" .. presetName .. "Button", parent, "DUIPanelButtonTemplate");
         button:SetText(presetNames[i]);
         button:SetWidth(80);
         button:SetHeight(22);
-        
-        -- Position buttons in a row
-        button:SetPoint("TOPLEFT", presetInfo, "BOTTOMLEFT", (i-1) * 85, -10);
+
+        -- Располагаем кнопки в ряд
+        button:SetPoint("TOPLEFT", presetInfo, "BOTTOMLEFT", (i-1) * 85, -15);
         button:SetScript("OnClick", function()
             DynamicCamera:ApplyPreset(string.lower(presetName));
-            DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Vista '" .. presetNames[i] .. "' aplicada");
-            -- Update display
+            DialogUI_DebugMessage("DialogUI: Вид '" .. presetNames[i] .. "' применен");
+            -- Обновляем отображение
             if DynamicCamera.settingsLabel then
-                DynamicCamera.settingsLabel:SetText("Distancia: " .. string.format("%.1f", DynamicCamera.config.interactionDistance) .. 
-                                                   " | Angulo: " .. string.format("%.1f", DynamicCamera.config.interactionPitch) .. 
-                                                   " | Velocidad: " .. string.format("%.1f", DynamicCamera.config.transitionSpeed));
+                DynamicCamera.settingsLabel:SetText("Дистанция: " .. string.format("%.1f", DynamicCamera.config.faceViewDistance) .. 
+                                                   " | Режим: " .. (DynamicCamera.config.useFaceView and "Лицом" or "Обычный"));
             end
         end);
     end
-    
-    -- Debug: Confirm camera section was created
-    DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Seccion de camara creada con " .. #presets .. " botones de preset");
+
+    -- Отладка: Подтверждаем создание раздела камеры
+    DialogUI_DebugMessage("DialogUI: Раздел камеры создан с " .. #presets .. " кнопками пресетов");
 end
 
--- Confirm function was defined
-DEFAULT_CHAT_FRAME:AddMessage("DialogUI: AddConfigControls function definida correctamente");
+-- Обновить существующие элементы управления конфигурации текущими значениями
+function DynamicCamera:UpdateConfigControls()
+    local checkbox = getglobal("DCameraEnabledCheckbox");
+    if checkbox then
+        checkbox:SetChecked(self.config.enabled);
+    end
 
--- Test camera presets
+    -- Обновляем флажок Face View
+    local faceViewCheckbox = getglobal("DCameraFaceViewCheckbox");
+    if faceViewCheckbox then
+        faceViewCheckbox:SetChecked(self.config.useFaceView);
+    end
+
+    if self.settingsLabel then
+        self.settingsLabel:SetText("Дистанция: " .. string.format("%.1f", self.config.faceViewDistance) .. 
+                                   " | Режим: " .. (self.config.useFaceView and "Лицом" or "Обычный"));
+    end
+
+    -- Обновляем значения чекбоксов (НЕ СОЗДАЕМ НОВЫЕ)
+    local checkboxData = {
+        {name = "Разговоры", config = "enableForGossip"},
+        {name = "Торговцы", config = "enableForVendors"},
+        {name = "Тренеры", config = "enableForTrainers"},
+        {name = "Квесты", config = "enableForQuests"}
+    };
+
+    for i, data in ipairs(checkboxData) do
+        local checkbox = getglobal("DCamera" .. data.name .. "Checkbox");
+        if checkbox then
+            checkbox:SetChecked(self.config[data.config]);
+        end
+    end
+end
+
+-- Тестовые пресеты камеры
 function DynamicCamera:ApplyPreset(presetName)
     if presetName == "cinematic" then
-        self.config.interactionDistance = 6;
-        self.config.interactionPitch = -0.5;
+        self.config.faceViewDistance = 2.0;
+        self.config.useFaceView = true;
     elseif presetName == "close" then
-        self.config.interactionDistance = 4;
-        self.config.interactionPitch = -0.2;
+        self.config.faceViewDistance = 1.5;
+        self.config.useFaceView = true;
     elseif presetName == "normal" then
-        self.config.interactionDistance = 8;
-        self.config.interactionPitch = -0.3;
+        self.config.faceViewDistance = 2.5;
+        self.config.useFaceView = true;
     elseif presetName == "wide" then
-        self.config.interactionDistance = 12;
-        self.config.interactionPitch = -0.1;
+        self.config.useFaceView = false;
+        self.config.interactionDistance = 8;
     end
-    
+
     self:SaveConfig();
-    DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Vista de camara '" .. presetName .. "' aplicada");
+    DialogUI_DebugMessage("DialogUI: Вид камеры '" .. presetName .. "' применен");
 end
 
--- Preset commands
+-- Команды пресетов
 SlashCmdList["CAMERA_PRESET"] = function(msg)
     local preset = string.lower(msg or "");
     if preset == "cinematic" or preset == "close" or preset == "normal" or preset == "wide" then
         DynamicCamera:ApplyPreset(preset);
     else
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Vistas disponibles: cinematic, close, normal, wide");
-        DEFAULT_CHAT_FRAME:AddMessage("Uso: /camerapreset [nombre_vista]");
+        if DEFAULT_CHAT_FRAME then
+            DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Доступные виды: cinematic, close, normal, wide");
+            DEFAULT_CHAT_FRAME:AddMessage("Использование: /camerapreset [название_вида]");
+        end
     end
 end;
 SLASH_CAMERA_PRESET1 = "/camerapreset";
+
+-- Подтверждаем, что функция определена
+DialogUI_DebugMessage("DialogUI: Функция AddConfigControls успешно определена");
