@@ -1,7 +1,7 @@
 ## Interface: 30300
-## Title: DialogUI_F335
+## Title: DialogUI
 ## Author: Sxus, Kasper
-## Version: 2.0
+## Version: 1.1.0
 ## DefaultState: Enabled
 ## LoadOnDemand: 0
 ## Notes: Addon made for an immersive questing experience in WotLK 3.3.5 client, consider it a WotLK+ frame.

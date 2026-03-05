@@ -101,7 +101,7 @@ MoneyTypeInfo["SEND_MAIL_COD"] = {
     canPickup = 1,
 };
 
-function MoneyFrame_OnLoad()
+function DialogUI_MoneyFrame_OnLoad()
     -- ГАРАНТИРОВАННО устанавливаем moneyType и info ПЕРЕД всем остальным
     this.moneyType = "PLAYER";
     this.info = MoneyTypeInfo["PLAYER"];
@@ -114,7 +114,7 @@ function MoneyFrame_OnLoad()
     this:RegisterEvent("SEND_MAIL_COD_CHANGED");
 end
 
-function SmallMoneyFrame_OnLoad()
+function DialogUI_SmallMoneyFrame_OnLoad()
     -- ГАРАНТИРОВАННО устанавливаем moneyType и info ПЕРЕД всем остальным
     this.moneyType = "PLAYER";
     this.info = MoneyTypeInfo["PLAYER"];
@@ -130,7 +130,7 @@ end
 
 -- Безопасная версия установки типа
 -- ИСПРАВЛЕНО: переименован параметр 'type' в 'moneyType' чтобы избежать конфликта с функцией type()
-function MoneyFrame_SetTypeSafe(moneyType)
+function DialogUI_MoneyFrame_SetTypeSafe(moneyType)
     if not moneyType then
         moneyType = "PLAYER";
     end
@@ -198,7 +198,7 @@ function MoneyFrame_SetTypeSafe(moneyType)
     DMoneyFrame_UpdateMoney();
 end
 
-function MoneyFrame_OnEvent()
+function DialogUI_MoneyFrame_OnEvent()
     -- Проверяем наличие info и видимость фрейма
     if not this or not this.info or not this:IsVisible() then
         return;
@@ -218,12 +218,12 @@ function MoneyFrame_OnEvent()
 end
 
 -- ИСПРАВЛЕНО: переименован параметр 'type' в 'moneyType'
-function MoneyFrame_SetType(moneyType)
+function DialogUI_MoneyFrame_SetType(moneyType)
     MoneyFrame_SetTypeSafe(moneyType);
 end
 
 -- Update the money shown in a money frame
-function DMoneyFrame_UpdateMoney()
+function DialogUI_DMoneyFrame_UpdateMoney()
     -- Проверяем наличие this
     if not this then return; end
 
@@ -255,7 +255,7 @@ function DMoneyFrame_UpdateMoney()
     end
 end
 
-function DMoneyFrame_Update(frameName, money)
+function DialogUI_DMoneyFrame_Update(frameName, money)
     if not frameName then return; end
 
     local frame = getglobal(frameName);
@@ -388,7 +388,7 @@ function DMoneyFrame_Update(frameName, money)
     frame:SetWidth(width);
 end
 
-function SetMoneyFrameColor(frameName, r, g, b)
+function DialogUI_SetMoneyFrameColor(frameName, r, g, b)
     if not frameName then return; end
 
     local goldButton = getglobal(frameName.."GoldButton");
