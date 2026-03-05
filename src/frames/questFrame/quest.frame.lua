@@ -68,7 +68,7 @@ function DQuestFrame_OnLoad()
     
     this:SetMovable(true);
     this:EnableMouse(true);
-    this:EnableKeyboard(true);
+    this:EnableKeyboard(false);
     
     DialogUI_HookOriginalQuestFunctions();
 end
@@ -320,6 +320,8 @@ function DQuestFrame_OnEvent(event)
     -- ИСПРАВЛЕНО: Приоритетная обработка QUEST_GREETING
     if (event == "QUEST_GREETING") then
         DebugMsg("DEBUG: QUEST_GREETING received in DQuestFrame");
+		
+		DQuestFrame:EnableKeyboard(false);
         
         -- Принудительно скрываем GossipFrame если он видим
         if GossipFrame and GossipFrame:IsVisible() then
@@ -479,6 +481,7 @@ function DQuestFrame_GetXPRewardText()
 end
 
 function DQuestFrameRewardPanel_OnShow()
+    DQuestFrame:EnableKeyboard(false);
     DQuestFrameDetailPanel:Hide();
     DQuestFrameGreetingPanel:Hide();
     DQuestFrameProgressPanel:Hide();
@@ -586,6 +589,7 @@ function DQuestRewardItem_OnClick()
 end
 
 function DQuestFrameProgressPanel_OnShow()
+    DQuestFrame:EnableKeyboard(false);
     DQuestFrameRewardPanel:Hide();
     DQuestFrameDetailPanel:Hide();
     DQuestFrameGreetingPanel:Hide();
@@ -683,6 +687,7 @@ function DQuestFrameProgressItems_Update()
 end
 
 function DQuestFrameGreetingPanel_OnShow()
+    DQuestFrame:EnableKeyboard(false);
     DQuestFrameRewardPanel:Hide();
     DQuestFrameProgressPanel:Hide();
     DQuestFrameDetailPanel:Hide();
@@ -820,63 +825,67 @@ function DQuestFrameGreetingPanel_OnShow()
         DQuestTitleButton1:SetPoint("TOPLEFT", "DGreetingText", "BOTTOMLEFT", -10, -25);
         
         for i = 1, numActiveQuests, 1 do
-            local questTitleButton = getglobal("DQuestTitleButton" .. i);
-            
-            local questTitle, isComplete, isDaily, isWeekly;
-            
-            if table.getn(gossipActiveQuests) > 0 then
-                local activeFields = 4;
-                local baseIndex = (i - 1) * activeFields + 1;
-                questTitle = gossipActiveQuests[baseIndex];
-                isComplete = gossipActiveQuests[baseIndex + 2];
-                isDaily = gossipActiveQuests[baseIndex + 3];
-            else
-                questTitle = GetActiveTitle(i);
-            end
-            
-            if questTitle and questTitle ~= "" then
-                if (buttonIndex <= 9) then
-                    questTitleButton:SetText(buttonIndex .. ".  " .. questTitle);
-					DQuestTitleButton_UpdateProgressBackground(questTitleButton);
-                else
-                    questTitleButton:SetText(questTitle);
-                end
-                
-                local iconTexture = questTitleButton:GetRegions();
-                if iconTexture and iconTexture.SetTexture then
-                    if isComplete then
-                        if isDaily then
-                            iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CompleteDailyQuest");
-                        else
-                            iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\completeQuestIcon");
-                        end
-                    else
-                        if isDaily then
-                            iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CompleteDailyQuest");
-                        else
-                            iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\incompleteQuestIcon");
-                        end
-                    end
-                end
-                
-                questTitleButton:SetHeight(questTitleButton:GetTextHeight() + 20);
-                questTitleButton:SetID(i);
-                questTitleButton.isActive = 1;
-                questTitleButton.type = "Active";
-                questTitleButton.isGossip = (table.getn(gossipActiveQuests) > 0);
-                questTitleButton.isComplete = isComplete;
-                questTitleButton.isDaily = isDaily;
-                questTitleButton:Show();
-                
-                if (i > 1) then
-                    questTitleButton:SetPoint("TOPLEFT", "DQuestTitleButton" .. (i - 1), "BOTTOMLEFT", 0, 0);
-                end
-                
-                buttonIndex = buttonIndex + 1;
-            else
-                questTitleButton:Hide();
-            end
-        end
+			local questTitleButton = getglobal("DQuestTitleButton" .. i);
+			
+			local questTitle, isComplete, isDaily, isWeekly;
+			
+			if table.getn(gossipActiveQuests) > 0 then
+				local activeFields = 4;
+				local baseIndex = (i - 1) * activeFields + 1;
+				questTitle = gossipActiveQuests[baseIndex];
+				isComplete = gossipActiveQuests[baseIndex + 2];
+				isDaily = gossipActiveQuests[baseIndex + 3];
+			else
+				questTitle = GetActiveTitle(i);
+			end
+			
+			if questTitle and questTitle ~= "" then
+				local displayText
+				if (buttonIndex <= 9) then
+					displayText = buttonIndex .. ".  " .. questTitle
+				else
+					displayText = questTitle
+				end
+				
+				-- ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ
+				DQuestTitleButton_SetText(questTitleButton, displayText, buttonIndex)
+				
+				-- Обновляем иконку
+				local iconTexture = questTitleButton:GetRegions();
+				if iconTexture and iconTexture.SetTexture then
+					if isComplete then
+						if isDaily then
+							iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CompleteDailyQuest");
+						else
+							iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\completeQuestIcon");
+						end
+					else
+						if isDaily then
+							iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CompleteDailyQuest");
+						else
+							iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\incompleteQuestIcon");
+						end
+					end
+				end
+				
+				questTitleButton:SetID(i);
+				questTitleButton.isActive = 1;
+				questTitleButton.type = "Active";
+				questTitleButton.isGossip = (table.getn(gossipActiveQuests) > 0);
+				questTitleButton.isComplete = isComplete;
+				questTitleButton.isDaily = isDaily;
+				questTitleButton:Show();
+				
+				-- Позиционирование теперь динамическое - каждая кнопка привязывается к предыдущей
+				if (i > 1) then
+					questTitleButton:SetPoint("TOPLEFT", "DQuestTitleButton" .. (i - 1), "BOTTOMLEFT", 0, -5);
+				end
+				
+				buttonIndex = buttonIndex + 1;
+			else
+				questTitleButton:Hide();
+			end
+		end
     end
 
     if (numAvailableQuests == 0) then
@@ -896,69 +905,70 @@ function DQuestFrameGreetingPanel_OnShow()
         local firstAvailableButtonIndex = buttonIndex;
         
         for i = 1, numAvailableQuests, 1 do
-            local questIndex = i;
-            local buttonIdx = buttonIndex;
-            local questTitleButton = getglobal("DQuestTitleButton" .. buttonIdx);
-            
-            local questTitle, isTrivial, isDaily, isRepeatable;
-            
-            if table.getn(gossipAvailableQuests) > 0 then
-                local availableFields = 5;
-                local baseIndex = (i - 1) * availableFields + 1;
-                questTitle = gossipAvailableQuests[baseIndex];
-                isTrivial = gossipAvailableQuests[baseIndex + 2];
-                isDaily = gossipAvailableQuests[baseIndex + 3];
-                isRepeatable = gossipAvailableQuests[baseIndex + 4];
-            else
-                questTitle = GetAvailableTitle(i);
-            end
-            
-            if DialogUI_Config and DialogUI_Config.hideTrivialQuests and isTrivial then
-                -- Пропускаем
-            elseif questTitle and questTitle ~= "" then
-                if (buttonIdx <= 9) then
-                    questTitleButton:SetText(buttonIdx .. ".  " .. questTitle);
-					DQuestTitleButton_UpdateProgressBackground(questTitleButton);
-                else
-                    questTitleButton:SetText(questTitle);
-                end
-                
-                local iconTexture = questTitleButton:GetRegions();
-                if iconTexture and iconTexture.SetTexture then
-                    if isDaily then
-                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\DailyQuest");
-                    elseif isRepeatable then
-                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\repeatableQuestIcon");
-                    else
-                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\availableQuestIcon");
-                    end
-                end
-                
-                questTitleButton:SetHeight(questTitleButton:GetTextHeight() + 20);
-                questTitleButton:SetID(i);
-                questTitleButton.isActive = 0;
-                questTitleButton.type = "Available";
-                questTitleButton.isGossip = (table.getn(gossipAvailableQuests) > 0);
-                questTitleButton.isDaily = isDaily;
-                questTitleButton.isRepeatable = isRepeatable;
-                questTitleButton:Show();
-                
-                if (buttonIdx > firstAvailableButtonIndex) then
-                    questTitleButton:SetPoint("TOPLEFT", "DQuestTitleButton" .. (buttonIdx - 1), "BOTTOMLEFT", 0, 0);
-                end
-                
-                buttonIndex = buttonIndex + 1;
-            end
-        end
+			local questIndex = i;
+			local buttonIdx = buttonIndex;
+			local questTitleButton = getglobal("DQuestTitleButton" .. buttonIdx);
+			
+			local questTitle, isTrivial, isDaily, isRepeatable;
+			
+			if table.getn(gossipAvailableQuests) > 0 then
+				local availableFields = 5;
+				local baseIndex = (i - 1) * availableFields + 1;
+				questTitle = gossipAvailableQuests[baseIndex];
+				isTrivial = gossipAvailableQuests[baseIndex + 2];
+				isDaily = gossipAvailableQuests[baseIndex + 3];
+				isRepeatable = gossipAvailableQuests[baseIndex + 4];
+			else
+				questTitle = GetAvailableTitle(i);
+			end
+			
+			if DialogUI_Config and DialogUI_Config.hideTrivialQuests and isTrivial then
+				-- Пропускаем
+			elseif questTitle and questTitle ~= "" then
+				local displayText
+				if (buttonIdx <= 9) then
+					displayText = buttonIdx .. ".  " .. questTitle
+				else
+					displayText = questTitle
+				end
+				
+				-- ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ
+				DQuestTitleButton_SetText(questTitleButton, displayText, buttonIdx)
+				
+				-- Обновляем иконку
+				local iconTexture = questTitleButton:GetRegions();
+				if iconTexture and iconTexture.SetTexture then
+					if isDaily then
+						iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\DailyQuest");
+					elseif isRepeatable then
+						iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\repeatableQuestIcon");
+					else
+						iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\availableQuestIcon");
+					end
+				end
+				
+				questTitleButton:SetID(i);
+				questTitleButton.isActive = 0;
+				questTitleButton.type = "Available";
+				questTitleButton.isGossip = (table.getn(gossipAvailableQuests) > 0);
+				questTitleButton.isDaily = isDaily;
+				questTitleButton.isRepeatable = isRepeatable;
+				questTitleButton:Show();
+				
+				-- Динамическое позиционирование
+				if (buttonIdx > 1) then
+					questTitleButton:SetPoint("TOPLEFT", "DQuestTitleButton" .. (buttonIdx - 1), "BOTTOMLEFT", 0, -5);
+				end
+				
+				buttonIndex = buttonIndex + 1;
+			end
+		end
     end
 
     for i = buttonIndex, MAX_NUM_QUESTS, 1 do
         local btn = getglobal("DQuestTitleButton" .. i);
         if btn then btn:Hide(); end
     end
-
-    DQuestFrame:EnableKeyboard(true);
-    DQuestFrame:SetScript("OnKeyDown", DQuestFrame_OnKeyDown);
 
     DQuestGreetingScrollFrame:UpdateScrollChildRect();
     DQuestGreetingScrollFrame:SetVerticalScroll(0);
@@ -967,6 +977,45 @@ function DQuestFrameGreetingPanel_OnShow()
     DialogUI_EnsureOriginalQuestHidden();
     
     DQuestFrame_GossipData = nil
+end
+
+-- Функция для установки текста кнопки с автопереносом и расширением
+function DQuestTitleButton_SetText(button, text, buttonIndex)
+    if not button then return end
+    
+    local fontString = button:GetFontString()
+    if not fontString then return end
+    
+    -- Устанавливаем текст с переносом
+    fontString:SetText(text)
+    
+    -- Разрешаем перенос слов
+    fontString:SetWordWrap(true)
+    
+    -- Устанавливаем максимальную ширину для переноса (360px - место для иконки и отступов)
+    fontString:SetWidth(360)
+    
+    -- Принудительно вычисляем размеры
+    fontString:SetHeight(0) -- Авто-высота
+    
+    -- Получаем реальные размеры текста
+    local textWidth = fontString:GetStringWidth()
+    local textHeight = fontString:GetStringHeight()
+    
+    -- Минимальная высота кнопки 24px, но если текст длинный - расширяем
+    local newHeight = math.max(24, textHeight + 8) -- +8 для отступов
+    
+    -- Устанавливаем новую высоту кнопки
+    button:SetHeight(newHeight)
+    
+    -- Обновляем фоновую текстуру
+    local bg = getglobal(button:GetName() .. "ProgressBackground")
+    if bg then
+        bg:SetWidth(math.min(textWidth + 45, 400))
+        bg:SetHeight(newHeight)
+    end
+    
+    -- Обновляем позиционирование следующих кнопок будет выполнено в цикле создания кнопок
 end
 
 -- Функция для обновления размера фона под текстом квеста
@@ -990,9 +1039,12 @@ function DQuestTitleButton_UpdateProgressBackground(button)
     end
 end
 
+-- Замените функцию DQuestFrame_OnKeyDown() на эту:
+
 function DQuestFrame_OnKeyDown()
     local key = arg1;
     
+    -- Список клавиш движения
     local movementKeys = {
         W = true, A = true, S = true, D = true,
         UP = true, DOWN = true, LEFT = true, RIGHT = true,
@@ -1000,55 +1052,21 @@ function DQuestFrame_OnKeyDown()
         NUMPAD4 = true, NUMPAD6 = true, NUMPAD7 = true, NUMPAD8 = true, NUMPAD9 = true
     }
     
+    -- Если нажата клавиша движения - НЕ обрабатываем её, передаём в игру
     if movementKeys[key] then
+        -- Немедленно отключаем захват клавиатуры
         DQuestFrame:EnableKeyboard(false);
-        local reEnableTime = GetTime() + 0.05
-        DQuestFrame:SetScript("OnUpdate", function()
-            if GetTime() >= reEnableTime then
-                if DQuestFrame:IsVisible() then
-                    DQuestFrame:EnableKeyboard(true)
-                end
-                DQuestFrame:SetScript("OnUpdate", nil)
-            end
-        end)
+        -- Передаём управление игре
         return;
     end
     
+    -- Обработка ESC - закрываем окно
     if key == "ESCAPE" then
         HideUIPanel(DQuestFrame);
-        return
+        return;
     end
 
-    if (key == "SPACE") then
-        if (DQuestFrameDetailPanel:IsVisible()) then
-            DQuestDetailAcceptButton_OnClick();
-            return;
-        elseif (DQuestFrameRewardPanel:IsVisible()) then
-            DQuestRewardCompleteButton_OnClick();
-            return;
-        elseif (DQuestFrameProgressPanel:IsVisible()) then
-            DQuestProgressCompleteButton_OnClick();
-            return;
-        else
-            local numActiveQuests = GetNumActiveQuests();
-            local numAvailableQuests = GetNumAvailableQuests();
-            
-            if (numActiveQuests == 0 and numAvailableQuests == 0) then
-                local gossipActive = {GetGossipActiveQuests()};
-                local gossipAvailable = {GetGossipAvailableQuests()};
-                numActiveQuests = math.floor(table.getn(gossipActive) / GOSSIP_ACTIVE_FIELDS);
-                numAvailableQuests = math.floor(table.getn(gossipAvailable) / GOSSIP_AVAILABLE_FIELDS);
-            end
-            
-            if (numActiveQuests > 0 or numAvailableQuests > 0) then
-                local firstButton = getglobal("DQuestTitleButton1");
-                if (firstButton and firstButton:IsVisible()) then
-                    firstButton:Click();
-                end
-            end
-        end
-    end
-    
+    -- Обработка цифровых клавиш 1-9 для выбора квестов
     if (key >= "1" and key <= "9") then
         local buttonNum = tonumber(key);
         
@@ -1074,8 +1092,8 @@ function DQuestFrame_OnKeyDown()
 end
 
 function DQuestFrame_OnShow()
+    DQuestFrame:EnableKeyboard(false); 
     PlaySound("igQuestListOpen");
-    DQuestFrame:EnableKeyboard(true);
     
     if DialogUI_ApplyAlpha then
         DialogUI_ApplyAlpha();
@@ -1517,6 +1535,7 @@ function DQuestFrameItems_Update(questState)
 end
 
 function DQuestFrameDetailPanel_OnShow()
+    DQuestFrame:EnableKeyboard(false);
     DQuestFrameRewardPanel:Hide();
     DQuestFrameProgressPanel:Hide();
     DQuestFrameGreetingPanel:Hide();

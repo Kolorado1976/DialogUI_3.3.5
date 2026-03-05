@@ -152,7 +152,6 @@
 				</Texture>
 			</Layer>
 			<Layer level="OVERLAY">
-				<!-- ИСПРАВЛЕНО: Убираем file, чтобы можно было менять текстуру из Lua -->
 				<Texture name="$parentQuestIcon">
 					<Size>
 						<AbsDimension x="24" y="24" />
@@ -177,9 +176,12 @@
 				local bg = getglobal(this:GetName() .. "ProgressBackground");
 				if text and bg then
 					local textWidth = text:GetStringWidth();
+					local textHeight = text:GetStringHeight();
 					if textWidth > 0 then
 						-- Ширина = ширина текста + отступы (35 слева для иконки, 10 справа)
 						bg:SetWidth(textWidth + 45);
+						-- Высота = высота текста + отступы
+						bg:SetHeight(math.max(24, textHeight + 4));
 					end
 				end
 			</OnSizeChanged>
@@ -187,12 +189,15 @@
 		<HighlightTexture
 			file="Interface\AddOns\DialogUI\src\assets\art\parchment\ButtonHighlight-Gossip"
 			alphaMode="ADD" />
-		<!-- Явно задаем шрифт для текста кнопки -->
-		<ButtonText name="$parentText" font="Interface\AddOns\DialogUI\src\assets\font\frizqt___cyr.ttf" justifyH="LEFT">
+		<!-- Явно задаем шрифт для текста кнопки с поддержкой переноса -->
+		<ButtonText name="$parentText" font="Interface\AddOns\DialogUI\src\assets\font\frizqt___cyr.ttf" justifyH="LEFT" wordwrap="true">
 			<FontHeight>
 				<AbsValue val="12" />
 			</FontHeight>
 			<Color r="1.0" g="1.0" b="1.0" />
+			<Size>
+				<AbsDimension x="360" y="0" />
+			</Size>
 			<Anchors>
 				<Anchor point="LEFT" relativeTo="$parentQuestIcon" relativePoint="RIGHT">
 					<Offset>

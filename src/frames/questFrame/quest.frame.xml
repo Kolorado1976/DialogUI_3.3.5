@@ -1317,9 +1317,9 @@
             <OnHide>
                 DQuestFrame_OnHide();
             </OnHide>
-            <OnKeyDown>
+            <!--<OnKeyDown>
                 DQuestFrame_OnKeyDown();
-            </OnKeyDown>
+            </OnKeyDown>-->
             <OnMouseWheel>
 				return false;
 			</OnMouseWheel>

@@ -406,8 +406,7 @@ function DGossipFrame_ShowGossipWindow(availableQuests, activeQuests, gossipOpti
     if DialogUI_ApplyAlpha then
         DialogUI_ApplyAlpha()
     end
-
-    DGossipKeyFrame:EnableKeyboard(true)
+	
     talentWipePending = false
     binderPending = false
 end
@@ -509,7 +508,7 @@ function DGossipFrame_OnKeyDown()
         DGossipKeyFrame:SetScript("OnUpdate", function()
             if GetTime() >= reEnableTime then
                 if DGossipFrame:IsVisible() then
-                    DGossipKeyFrame:EnableKeyboard(true)
+                    DGossipKeyFrame:EnableKeyboard(false)
                 end
                 DGossipKeyFrame:SetScript("OnUpdate", nil)
             end
@@ -539,7 +538,7 @@ function DGossipFrame_OnKeyDown()
     DGossipKeyFrame:SetScript("OnUpdate", function()
         if GetTime() >= reEnableTime then
             if DGossipFrame:IsVisible() then
-                DGossipKeyFrame:EnableKeyboard(true)
+                DGossipKeyFrame:EnableKeyboard(false)
             end
             DGossipKeyFrame:SetScript("OnUpdate", nil)
         end
@@ -777,7 +776,7 @@ function DGossipFrameOptionsUpdate(optionsTable)
         DebugMsg("DEBUG: OptionsUpdate - empty table")
         return
     end
-	
+    
     local titleIndex = 1
     local optionsCount = table.getn(optionsTable)
     local numOptions = math.floor(optionsCount / 2)
@@ -812,7 +811,10 @@ function DGossipFrameOptionsUpdate(optionsTable)
         end
 
         local numberedText = DGossipFrame.buttonIndex .. ". " .. text
-        titleButton:SetText(numberedText)
+        
+        -- ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ для gossip кнопок
+        DGossipTitleButton_SetGossipText(titleButton, numberedText)
+
         totalGossipButtons = totalGossipButtons + 1
 
         titleButton:SetID(titleIndex)
@@ -824,13 +826,13 @@ function DGossipFrameOptionsUpdate(optionsTable)
             DGossipTitleButton_OnClick_Direct(this)
         end)
 
-        -- ИСПРАВЛЕНО: Определяем иконку по тексту, а не по типу API
+        -- Определяем иконку по тексту
         local detectedIconType = DetermineGossipIconTypeByText(text)
         DebugMsg(string.format("Text: '%s' -> Detected type: '%s', API type: '%s'", text, detectedIconType, tostring(iconType)))
         
         SetGossipButtonIcon(titleButton, detectedIconType, text)
 
-        -- Устанавливаем фоновую текстуру на низкий уровень
+        -- Устанавливаем фоновую текстуру
         titleButton:SetNormalTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\parchment\\OptionBackground-common")
         local normalTexture = titleButton:GetNormalTexture()
         if normalTexture then
@@ -838,7 +840,6 @@ function DGossipFrameOptionsUpdate(optionsTable)
         end
         
         titleButton:SetNormalFontObject("DQuestButtonTitleGossip")
-        titleButton:SetHeight(titleButton:GetTextHeight() + 20)
         
         -- Настраиваем текст кнопки
         local buttonText = titleButton:GetFontString()
@@ -850,11 +851,49 @@ function DGossipFrameOptionsUpdate(optionsTable)
 
         titleButton:Show()
         
+        -- Динамическое позиционирование
+        if DGossipFrame.buttonIndex > 1 then
+            local prevButton = getglobal("DGossipTitleButton" .. (DGossipFrame.buttonIndex - 1))
+            if prevButton then
+                titleButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -5)
+            end
+        end
+        
         DGossipFrame.buttonIndex = DGossipFrame.buttonIndex + 1
         titleIndex = titleIndex + 1
     end
     
     DebugMsg(string.format("DEBUG: OptionsUpdate finished - buttonIndex now %d", DGossipFrame.buttonIndex))
+end
+
+-- Функция для установки текста gossip кнопки с автопереносом
+function DGossipTitleButton_SetGossipText(button, text)
+    if not button then return end
+    
+    local fontString = button:GetFontString()
+    if not fontString then return end
+    
+    -- Устанавливаем текст с переносом
+    fontString:SetText(text)
+    fontString:SetWordWrap(true)
+    fontString:SetWidth(360) -- Максимальная ширина текста
+    fontString:SetHeight(0) -- Авто-высота
+    
+    -- Получаем реальные размеры
+    local textWidth = fontString:GetStringWidth()
+    local textHeight = fontString:GetStringHeight()
+    
+    -- Минимальная высота 24px, расширяем при необходимости
+    local newHeight = math.max(24, textHeight + 8)
+    
+    button:SetHeight(newHeight)
+    
+    -- Обновляем фон если есть
+    local bg = getglobal(button:GetName() .. "ProgressBackground")
+    if bg then
+        bg:SetWidth(math.min(textWidth + 45, 400))
+        bg:SetHeight(newHeight)
+    end
 end
 
 -- НОВАЯ ФУНКЦИЯ: Определение типа иконки по тексту опции (русская локализация)
@@ -973,7 +1012,6 @@ function DGossipFrameAvailableQuestsUpdate(questsTable)
 
     local dataSize = table.getn(questsTable)
     
-    -- Правильное определение количества полей
     local fieldsPerQuest = 5
     if dataSize % 5 == 0 then
         fieldsPerQuest = 5
@@ -1016,7 +1054,9 @@ function DGossipFrameAvailableQuestsUpdate(questsTable)
 
         local displayText = DGossipFrame.buttonIndex .. ". " .. questTitle
         
-        titleButton:SetText(displayText);
+        -- ИСПОЛЬЗУЕМ ФУНКЦИЮ С ПЕРЕНОСОМ
+        DGossipTitleButton_SetGossipText(titleButton, displayText)
+        
         titleButton:SetID(titleIndex);
         titleButton.type = "available"
         titleButton.questIndex = titleIndex
@@ -1029,10 +1069,9 @@ function DGossipFrameAvailableQuestsUpdate(questsTable)
             DGossipTitleButton_OnClick_Direct(this)
         end)
 
-        -- ИСПРАВЛЕНО: Используем существующую иконку из XML вместо создания новой
+        -- Иконка
         local gossipIcon = _G[titleButton:GetName() .. "QuestIcon"]
         if not gossipIcon then
-            -- Если иконки нет по имени, ищем через GetRegions
             local regions = {titleButton:GetRegions()}
             for _, region in ipairs(regions) do
                 if region:GetObjectType() == "Texture" then
@@ -1052,7 +1091,6 @@ function DGossipFrameAvailableQuestsUpdate(questsTable)
 
         -- Настройка кнопки
         titleButton:SetNormalTexture("Interface/AddOns/DialogUI/src/assets/art/parchment/OptionBackground-common")
-        titleButton:SetHeight(40)
         
         local btnText = titleButton:GetFontString()
         if btnText then
@@ -1061,6 +1099,14 @@ function DGossipFrameAvailableQuestsUpdate(questsTable)
         end
 
         titleButton:Show()
+        
+        -- Динамическое позиционирование
+        if DGossipFrame.buttonIndex > 1 then
+            local prevButton = getglobal("DGossipTitleButton" .. (DGossipFrame.buttonIndex - 1))
+            if prevButton then
+                titleButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -5)
+            end
+        end
         
         DebugMsg(string.format("DEBUG: Button %d ready - isGossip=%s, ID=%d", 
             DGossipFrame.buttonIndex, tostring(titleButton.isGossip), titleIndex))
@@ -1073,21 +1119,17 @@ end
 function DGossipFrameActiveQuestsUpdate(questsTable)
     if not questsTable or table.getn(questsTable) == 0 then return end
 
-    -- ИСПРАВЛЕНО: Правильное определение структуры данных
-    -- Судя по вашим данным: приходит 10 элементов для 3 квестов
-    -- Это может быть формат: [title, level, ?, isComplete, ...]
     local dataSize = table.getn(questsTable)
     
-    -- Определяем количество полей на квест
     local fieldsPerQuest
     if dataSize % 4 == 0 then
-        fieldsPerQuest = 4  -- title, level, isComplete, something
+        fieldsPerQuest = 4
     elseif dataSize % 3 == 0 then
-        fieldsPerQuest = 3  -- title, level, isComplete
+        fieldsPerQuest = 3
     elseif dataSize % 2 == 0 then
-        fieldsPerQuest = 2  -- title, level
+        fieldsPerQuest = 2
     else
-        fieldsPerQuest = 1  -- title only
+        fieldsPerQuest = 1
     end
     
     local numQuests = math.floor(dataSize / fieldsPerQuest)
@@ -1095,17 +1137,14 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
     DebugMsg(string.format("DEBUG: ActiveQuests - dataSize=%d, fieldsPerQuest=%d, numQuests=%d", 
         dataSize, fieldsPerQuest, numQuests))
 
-    -- Собираем квесты в массив
     local quests = {}
     for i = 1, numQuests do
         local baseIndex = (i - 1) * fieldsPerQuest + 1
         local questTitle = questsTable[baseIndex]
         local questLevel = questsTable[baseIndex + 1]
         
-        -- Определяем isComplete (может быть на разных позициях)
         local isComplete = false
         if fieldsPerQuest >= 3 then
-            -- Проверяем разные возможные позиции для isComplete
             if questsTable[baseIndex + 2] ~= nil then
                 isComplete = (questsTable[baseIndex + 2] == 1)
             elseif questsTable[baseIndex + 3] ~= nil then
@@ -1141,10 +1180,11 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
         local questTitle = quest.title
         local isComplete = quest.isComplete
 
-        -- Формируем отображаемый текст с номером и названием
         local displayText = DGossipFrame.buttonIndex .. ". " .. questTitle
         
-        titleButton:SetText(displayText);
+        -- ИСПОЛЬЗУЕМ ФУНКЦИЮ С ПЕРЕНОСОМ
+        DGossipTitleButton_SetGossipText(titleButton, displayText)
+        
         titleButton:SetID(titleIndex);
         titleButton.type = "active"
         titleButton.questIndex = titleIndex
@@ -1155,7 +1195,7 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
             DGossipTitleButton_OnClick_Direct(this)
         end)
 
-        -- Ищем иконку
+        -- Иконка
         local gossipIcon = _G[titleButton:GetName() .. "QuestIcon"]
         if not gossipIcon then
             local regions = {titleButton:GetRegions()}
@@ -1185,7 +1225,6 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
 
         -- Настройка кнопки
         titleButton:SetNormalTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\parchment\\OptionBackground-common")
-        titleButton:SetHeight(40)
         
         local btnText = titleButton:GetFontString()
         if btnText then
@@ -1194,6 +1233,14 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
         end
 
         titleButton:Show()
+        
+        -- Динамическое позиционирование
+        if DGossipFrame.buttonIndex > 1 then
+            local prevButton = getglobal("DGossipTitleButton" .. (DGossipFrame.buttonIndex - 1))
+            if prevButton then
+                titleButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -5)
+            end
+        end
         
         DGossipFrame.buttonIndex = DGossipFrame.buttonIndex + 1;
         titleIndex = titleIndex + 1
