@@ -6,6 +6,11 @@
 ## LoadOnDemand: 0
 ## Notes: Addon made for an immersive questing experience in WotLK 3.3.5 client, consider it a WotLK+ frame.
 ## SavedVariables: DialogUIFramePosition, DialogUI_SavedConfig
+## X-Sirus-Update https://github.com/fxpw/RaidBrowser/tree/master
+## X-Sirus-Category 13
+## X-Adapted-By: Velord
+## X-Adaptation-For: 3.3.5
+## X-Adaptation-Fixes: Исправлена блокировка движения при открытых окнах
 
 # Fonts used for the frames
 src\assets\font\fonts.xml
