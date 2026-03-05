@@ -1073,35 +1073,59 @@ end
 function DGossipFrameActiveQuestsUpdate(questsTable)
     if not questsTable or table.getn(questsTable) == 0 then return end
 
-    -- ИСПРАВЛЕНО: Используем прямой доступ к элементам по известным индексам
-    -- Из отладки видно, что элементы имеют индексы 1, 2 и 4
-    local quests = {}
+    -- ИСПРАВЛЕНО: Правильное определение структуры данных
+    -- Судя по вашим данным: приходит 10 элементов для 3 квестов
+    -- Это может быть формат: [title, level, ?, isComplete, ...]
+    local dataSize = table.getn(questsTable)
     
-    -- Собираем квесты вручную
-    local i = 1
-    while questsTable[i] do
-        local questTitle = questsTable[i]
-        local questLevel = questsTable[i + 1]
+    -- Определяем количество полей на квест
+    local fieldsPerQuest
+    if dataSize % 4 == 0 then
+        fieldsPerQuest = 4  -- title, level, isComplete, something
+    elseif dataSize % 3 == 0 then
+        fieldsPerQuest = 3  -- title, level, isComplete
+    elseif dataSize % 2 == 0 then
+        fieldsPerQuest = 2  -- title, level
+    else
+        fieldsPerQuest = 1  -- title only
+    end
+    
+    local numQuests = math.floor(dataSize / fieldsPerQuest)
+    
+    DebugMsg(string.format("DEBUG: ActiveQuests - dataSize=%d, fieldsPerQuest=%d, numQuests=%d", 
+        dataSize, fieldsPerQuest, numQuests))
+
+    -- Собираем квесты в массив
+    local quests = {}
+    for i = 1, numQuests do
+        local baseIndex = (i - 1) * fieldsPerQuest + 1
+        local questTitle = questsTable[baseIndex]
+        local questLevel = questsTable[baseIndex + 1]
         
-        -- Проверяем, есть ли следующий элемент (isComplete) по индексу i+2
-        -- Но в вашем случае i+2 может быть пропущен, поэтому проверяем i+3
-        local isComplete = questsTable[i + 3]  -- Индекс 4 содержит isComplete
+        -- Определяем isComplete (может быть на разных позициях)
+        local isComplete = false
+        if fieldsPerQuest >= 3 then
+            -- Проверяем разные возможные позиции для isComplete
+            if questsTable[baseIndex + 2] ~= nil then
+                isComplete = (questsTable[baseIndex + 2] == 1)
+            elseif questsTable[baseIndex + 3] ~= nil then
+                isComplete = (questsTable[baseIndex + 3] == 1)
+            end
+        end
         
-        if questTitle and questLevel then
+        if questTitle and questTitle ~= "" and questTitle ~= tostring(i) then
             table.insert(quests, {
                 title = questTitle,
                 level = questLevel,
-                isComplete = isComplete == 1  -- Конвертируем 1 в true
+                isComplete = isComplete
             })
+            DebugMsg(string.format("DEBUG: Quest %d - title='%s', level=%s, isComplete=%s", 
+                i, tostring(questTitle), tostring(questLevel), tostring(isComplete)))
         end
-        
-        -- Переходим к следующему квесту (с шагом 3, так как у нас 3 поля)
-        i = i + 3
     end
 
-    local numQuests = #quests
-    
-    DebugMsg(string.format("DEBUG: ActiveQuests - manually parsed %d quests", numQuests))
+    numQuests = #quests
+    DebugMsg(string.format("DEBUG: ActiveQuests - parsed %d valid quests", numQuests))
 
     if numQuests == 0 then return end
 
@@ -1117,8 +1141,7 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
         local questTitle = quest.title
         local isComplete = quest.isComplete
 
-        if not questTitle or questTitle == "" then break end
-
+        -- Формируем отображаемый текст с номером и названием
         local displayText = DGossipFrame.buttonIndex .. ". " .. questTitle
         
         titleButton:SetText(displayText);
@@ -1145,19 +1168,17 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
         end
         
         if gossipIcon then
+            gossipIcon:ClearAllPoints()
             gossipIcon:SetWidth(24)
             gossipIcon:SetHeight(24)
             gossipIcon:SetPoint("LEFT", titleButton, "LEFT", 5, 0)
             
-            DebugMsg(string.format("DEBUG: Quest '%s' - isComplete=%s", 
-                questTitle, tostring(isComplete)))
-            
             if isComplete then
                 gossipIcon:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\activeQuestIcon")
-                DebugMsg("DEBUG: Using completeQuestIcon")
+                DebugMsg(string.format("DEBUG: Quest '%s' - using complete icon", questTitle))
             else
                 gossipIcon:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\incompleteQuestIcon")
-                DebugMsg("DEBUG: Using incompleteQuestIcon")
+                DebugMsg(string.format("DEBUG: Quest '%s' - using incomplete icon", questTitle))
             end
             gossipIcon:Show()
         end
