@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 
 local function DebugMsg(...)
     if DEBUG_MODE then
@@ -1181,8 +1181,8 @@ function DQuestTitleButton_OnClick()
 end
 
 function DQuestMoneyFrame_OnLoad()
-    MoneyFrame_OnLoad();
-    MoneyFrame_SetType("STATIC");
+    DUI_MoneyFrame_OnLoad();
+    DUI_MoneyFrame_SetType("STATIC");
 end
 
 function DQuestFrame_ShowXPReward(parentFrame, anchorFrame)
@@ -1252,7 +1252,7 @@ function DQuestFrameItems_Update(questState)
     else
         getglobal(questState .. "MoneyFrame"):Show();
         QuestFrame_SetAsLastShown(getglobal(questState .. "MoneyFrame"), spacerFrame);
-        DMoneyFrame_Update(questState .. "MoneyFrame", money);
+        DUI_MoneyFrame_UpdateFrame(questState .. "MoneyFrame", money);
     end
 
     for i = totalRewards + 1, MAX_NUM_ITEMS, 1 do

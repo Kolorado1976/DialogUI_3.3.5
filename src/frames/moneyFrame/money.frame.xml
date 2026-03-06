@@ -44,7 +44,6 @@
                 </Layers>
                 <Scripts>
                     <OnLoad>
-                        -- Скрываем стандартную текстуру кнопки
                         this:SetNormalTexture("");
                         this:SetPushedTexture("");
                         this:SetHighlightTexture("");
@@ -52,9 +51,14 @@
                     <OnClick>
                         local parent = this:GetParent();
                         local moneyType = parent.moneyType or "PLAYER";
-                        local moneyTypeInfo = MoneyTypeInfo[moneyType];
+                        local moneyTypeInfo = DUI_MoneyTypeInfo[moneyType];
                         if moneyTypeInfo and moneyTypeInfo.UpdateFunc then
+                            -- Устанавливаем this = parent для UpdateFunc
+                            local oldThis = this;
+                            this = parent;
                             local currentMoney = moneyTypeInfo.UpdateFunc();
+                            this = oldThis;
+                            
                             OpenCoinPickupFrame(this.multiplier, currentMoney, parent);
                             parent.hasPickup = 1;
                         end
@@ -104,7 +108,6 @@
                 </Layers>
                 <Scripts>
                     <OnLoad>
-                        -- Скрываем стандартную текстуру кнопки
                         this:SetNormalTexture("");
                         this:SetPushedTexture("");
                         this:SetHighlightTexture("");
@@ -112,9 +115,13 @@
                     <OnClick>
                         local parent = this:GetParent();
                         local moneyType = parent.moneyType or "PLAYER";
-                        local moneyTypeInfo = MoneyTypeInfo[moneyType];
+                        local moneyTypeInfo = DUI_MoneyTypeInfo[moneyType];
                         if moneyTypeInfo and moneyTypeInfo.UpdateFunc then
+                            local oldThis = this;
+                            this = parent;
                             local currentMoney = moneyTypeInfo.UpdateFunc();
+                            this = oldThis;
+                            
                             OpenCoinPickupFrame(this.multiplier, currentMoney, parent);
                             parent.hasPickup = 1;
                         end
@@ -164,7 +171,6 @@
                 </Layers>
                 <Scripts>
                     <OnLoad>
-                        -- Скрываем стандартную текстуру кнопки
                         this:SetNormalTexture("");
                         this:SetPushedTexture("");
                         this:SetHighlightTexture("");
@@ -172,9 +178,13 @@
                     <OnClick>
                         local parent = this:GetParent();
                         local moneyType = parent.moneyType or "PLAYER";
-                        local moneyTypeInfo = MoneyTypeInfo[moneyType];
+                        local moneyTypeInfo = DUI_MoneyTypeInfo[moneyType];
                         if moneyTypeInfo and moneyTypeInfo.UpdateFunc then
+                            local oldThis = this;
+                            this = parent;
                             local currentMoney = moneyTypeInfo.UpdateFunc();
+                            this = oldThis;
+                            
                             OpenCoinPickupFrame(this.multiplier, currentMoney, parent);
                             parent.hasPickup = 1;
                         end
@@ -187,13 +197,13 @@
         </Frames>
         <Scripts>
             <OnLoad>
-                DialogUI_MoneyFrame_OnLoad();
+                DUI_MoneyFrame_OnLoad();
             </OnLoad>
             <OnEvent>
-                MoneyFrame_OnEvent();
+                DUI_MoneyFrame_OnEvent(event);
             </OnEvent>
             <OnShow>
-                DMoneyFrame_UpdateMoney();
+                DUI_MoneyFrame_UpdateMoney();
             </OnShow>
             <OnHide>
                 if ( this.hasPickup == 1 ) then
