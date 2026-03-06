@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 
 local function DebugMsg(...)
     if DEBUG_MODE then
@@ -707,16 +707,9 @@ function DQuestFrameGreetingPanel_OnShow()
         local availCount = table.getn(gossipAvailableQuests)
         local activeCount = table.getn(gossipActiveQuests)
         
-        DebugMsg(string.format("DEBUG LOADED: avail count=%d", availCount))
-        for i = 1, availCount do
-            DebugMsg(string.format("  [%d] = %s", i, tostring(gossipAvailableQuests[i])))
-        end
-        
-        -- ИСПРАВЛЕНО: Используем сохраненное количество или вычисляем
         if gossipData.numAvailable then
             numAvailableQuests = gossipData.numAvailable
         else
-            -- Fallback на вычисление
             if availCount == 2 then
                 numAvailableQuests = 1
             elseif availCount % 5 == 0 then
@@ -747,12 +740,9 @@ function DQuestFrameGreetingPanel_OnShow()
                 numActiveQuests = activeCount
             end
         end
-        
-        DebugMsg(string.format("DEBUG: Using SAVED GOSSIP DATA - active=%d, available=%d (raw=%d/%d)", 
-            numActiveQuests, numAvailableQuests, activeCount, availCount))
     else
-        numActiveQuests = GetNumActiveQuests();
-        numAvailableQuests = GetNumAvailableQuests();
+        numActiveQuests = GetNumActiveQuests();      -- Уже взятые задания
+        numAvailableQuests = GetNumAvailableQuests(); -- Задания, которые можно взять
         
         if numActiveQuests == 0 and numAvailableQuests == 0 then
             gossipActiveQuests = {GetGossipActiveQuests()};
@@ -783,12 +773,6 @@ function DQuestFrameGreetingPanel_OnShow()
                     numActiveQuests = math.floor(activeCount / 4);
                 end
             end
-            
-            DebugMsg(string.format("DEBUG: Using GOSSIP API - active=%d, available=%d", 
-                numActiveQuests, numAvailableQuests));
-        else
-            DebugMsg(string.format("DEBUG: Using STANDARD API - active=%d, available=%d",
-                numActiveQuests, numAvailableQuests));
         end
     end
 
@@ -804,167 +788,159 @@ function DQuestFrameGreetingPanel_OnShow()
     DGreetingText:SetText(greetingText or "");
     
     SetFontColor(DGreetingText, "DarkBrown");
-    SetFontColor(DCurrentQuestsText, "DarkBrown");
-    SetFontColor(DAvailableQuestsText, "DarkBrown");
+    
+    -- ИСПРАВЛЕНО: Скрываем текстовые заголовки
+    DCurrentQuestsText:Hide();
+    DAvailableQuestsText:Hide();
+    DQuestGreetingFrameHorizontalBreak:Hide();
 
     local buttonIndex = 1;
 
-    if (numActiveQuests == 0) then
-        DCurrentQuestsText:Hide();
-        for i = 1, MAX_NUM_QUESTS do
-            local btn = getglobal("DQuestTitleButton" .. i);
-            if btn then btn:Hide(); end
+    -- Сначала показываем АКТИВНЫЕ задания (уже взятые)
+    if (numActiveQuests > 0) then
+        -- Привязываем первую кнопку к тексту приветствия
+        local greetingText = DGreetingText:GetText() or "";
+        if greetingText ~= "" then
+            DQuestTitleButton1:SetPoint("TOPLEFT", "DGreetingText", "BOTTOMLEFT", -10, -15);
+        else
+            DQuestTitleButton1:SetPoint("TOPLEFT", "DQuestGreetingScrollChildFrame", "TOPLEFT", 10, -10);
         end
-    else
-        -- ИСПРАВЛЕНО: Привязываем "Текущие задания" непосредственно к тексту приветствия
-        DCurrentQuestsText:SetPoint("TOPLEFT", "DGreetingText", "BOTTOMLEFT", 0, -10);
-        DCurrentQuestsText:Show();
-        
-        -- ИСПРАВЛЕНО: Привязываем первую кнопку непосредственно к тексту приветствия, а не к "Текущие задания"
-        -- Это поднимет кнопки вверх
-        DQuestTitleButton1:SetPoint("TOPLEFT", "DGreetingText", "BOTTOMLEFT", -10, -25);
         
         for i = 1, numActiveQuests, 1 do
-			local questTitleButton = getglobal("DQuestTitleButton" .. i);
-			
-			local questTitle, isComplete, isDaily, isWeekly;
-			
-			if table.getn(gossipActiveQuests) > 0 then
-				local activeFields = 4;
-				local baseIndex = (i - 1) * activeFields + 1;
-				questTitle = gossipActiveQuests[baseIndex];
-				isComplete = gossipActiveQuests[baseIndex + 2];
-				isDaily = gossipActiveQuests[baseIndex + 3];
-			else
-				questTitle = GetActiveTitle(i);
-			end
-			
-			if questTitle and questTitle ~= "" then
-				local displayText
-				if (buttonIndex <= 9) then
-					displayText = buttonIndex .. ".  " .. questTitle
-				else
-					displayText = questTitle
-				end
-				
-				-- ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ
-				DQuestTitleButton_SetText(questTitleButton, displayText, buttonIndex)
-				
-				-- Обновляем иконку
-				local iconTexture = questTitleButton:GetRegions();
-				if iconTexture and iconTexture.SetTexture then
-					if isComplete then
-						if isDaily then
-							iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CompleteDailyQuest");
-						else
-							iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\completeQuestIcon");
-						end
-					else
-						if isDaily then
-							iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CompleteDailyQuest");
-						else
-							iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\incompleteQuestIcon");
-						end
-					end
-				end
-				
-				questTitleButton:SetID(i);
-				questTitleButton.isActive = 1;
-				questTitleButton.type = "Active";
-				questTitleButton.isGossip = (table.getn(gossipActiveQuests) > 0);
-				questTitleButton.isComplete = isComplete;
-				questTitleButton.isDaily = isDaily;
-				questTitleButton:Show();
-				
-				-- Позиционирование теперь динамическое - каждая кнопка привязывается к предыдущей
-				if (i > 1) then
-					questTitleButton:SetPoint("TOPLEFT", "DQuestTitleButton" .. (i - 1), "BOTTOMLEFT", 0, -5);
-				end
-				
-				buttonIndex = buttonIndex + 1;
-			else
-				questTitleButton:Hide();
-			end
-		end
-    end
-
-    if (numAvailableQuests == 0) then
-        DAvailableQuestsText:Hide();
-        DQuestGreetingFrameHorizontalBreak:Hide();
-    else
-        if (numActiveQuests > 0) then
-            DQuestGreetingFrameHorizontalBreak:SetPoint("TOPLEFT", "DQuestTitleButton" .. numActiveQuests, "BOTTOMLEFT", 22, -10);
-            DQuestGreetingFrameHorizontalBreak:Show();
-            DAvailableQuestsText:SetPoint("TOPLEFT", "DQuestGreetingFrameHorizontalBreak", "BOTTOMLEFT", -12, -10);
-        else
-            DAvailableQuestsText:SetPoint("TOPLEFT", "DGreetingText", "BOTTOMLEFT", 0, -10);
+            local questTitleButton = getglobal("DQuestTitleButton" .. buttonIndex);
+            if not questTitleButton then break end
+            
+            local questTitle, isComplete, isDaily;
+            
+            if table.getn(gossipActiveQuests) > 0 then
+                local activeFields = 4;
+                local baseIndex = (i - 1) * activeFields + 1;
+                questTitle = gossipActiveQuests[baseIndex];
+                isComplete = gossipActiveQuests[baseIndex + 2];
+                isDaily = gossipActiveQuests[baseIndex + 3];
+            else
+                questTitle = GetActiveTitle(i);
+                isComplete = IsActiveQuestTrivial(i);
+                isDaily = false;
+            end
+            
+            if questTitle and questTitle ~= "" then
+                local displayText
+                if (buttonIndex <= 9) then
+                    displayText = buttonIndex .. ".  " .. questTitle
+                else
+                    displayText = questTitle
+                end
+                
+                DQuestTitleButton_SetText(questTitleButton, displayText, buttonIndex)
+                
+                -- Устанавливаем иконку для активного задания
+                local iconTexture = getglobal(questTitleButton:GetName() .. "QuestIcon");
+                if iconTexture then
+                    iconTexture:SetTexCoord(0, 1, 0, 1);
+                    iconTexture:SetWidth(24);
+                    iconTexture:SetHeight(24);
+                    
+                    if isComplete then
+                        if isDaily then
+                            iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CompleteDailyQuest");
+                        else
+                            iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\completeQuestIcon");
+                        end
+                    else
+                        if isDaily then
+                            iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\DailyQuest");
+                        else
+                            iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\incompleteQuestIcon");
+                        end
+                    end
+                end
+                
+                questTitleButton:SetID(i);
+                questTitleButton.isActive = 1;
+                questTitleButton.type = "Active";
+                questTitleButton.isGossip = (table.getn(gossipActiveQuests) > 0);
+                questTitleButton.isComplete = isComplete;
+                questTitleButton.isDaily = isDaily;
+                questTitleButton:Show();
+                
+                if (buttonIndex > 1) then
+                    questTitleButton:SetPoint("TOPLEFT", "DQuestTitleButton" .. (buttonIndex - 1), "BOTTOMLEFT", 0, -5);
+                end
+                
+                buttonIndex = buttonIndex + 1;
+            end
         end
-        
-        DAvailableQuestsText:Show();
-        
-        local firstAvailableButtonIndex = buttonIndex;
-        
-        for i = 1, numAvailableQuests, 1 do
-			local questIndex = i;
-			local buttonIdx = buttonIndex;
-			local questTitleButton = getglobal("DQuestTitleButton" .. buttonIdx);
-			
-			local questTitle, isTrivial, isDaily, isRepeatable;
-			
-			if table.getn(gossipAvailableQuests) > 0 then
-				local availableFields = 5;
-				local baseIndex = (i - 1) * availableFields + 1;
-				questTitle = gossipAvailableQuests[baseIndex];
-				isTrivial = gossipAvailableQuests[baseIndex + 2];
-				isDaily = gossipAvailableQuests[baseIndex + 3];
-				isRepeatable = gossipAvailableQuests[baseIndex + 4];
-			else
-				questTitle = GetAvailableTitle(i);
-			end
-			
-			if DialogUI_Config and DialogUI_Config.hideTrivialQuests and isTrivial then
-				-- Пропускаем
-			elseif questTitle and questTitle ~= "" then
-				local displayText
-				if (buttonIdx <= 9) then
-					displayText = buttonIdx .. ".  " .. questTitle
-				else
-					displayText = questTitle
-				end
-				
-				-- ИСПОЛЬЗУЕМ НОВУЮ ФУНКЦИЮ
-				DQuestTitleButton_SetText(questTitleButton, displayText, buttonIdx)
-				
-				-- Обновляем иконку
-				local iconTexture = questTitleButton:GetRegions();
-				if iconTexture and iconTexture.SetTexture then
-					if isDaily then
-						iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\DailyQuest");
-					elseif isRepeatable then
-						iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\repeatableQuestIcon");
-					else
-						iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\availableQuestIcon");
-					end
-				end
-				
-				questTitleButton:SetID(i);
-				questTitleButton.isActive = 0;
-				questTitleButton.type = "Available";
-				questTitleButton.isGossip = (table.getn(gossipAvailableQuests) > 0);
-				questTitleButton.isDaily = isDaily;
-				questTitleButton.isRepeatable = isRepeatable;
-				questTitleButton:Show();
-				
-				-- Динамическое позиционирование
-				if (buttonIdx > 1) then
-					questTitleButton:SetPoint("TOPLEFT", "DQuestTitleButton" .. (buttonIdx - 1), "BOTTOMLEFT", 0, -5);
-				end
-				
-				buttonIndex = buttonIndex + 1;
-			end
-		end
     end
 
+    -- Потом показываем ДОСТУПНЫЕ задания (можно взять)
+    if (numAvailableQuests > 0) then
+        for i = 1, numAvailableQuests, 1 do
+            local questTitleButton = getglobal("DQuestTitleButton" .. buttonIndex);
+            if not questTitleButton then break end
+            
+            local questTitle, isTrivial, isDaily, isRepeatable;
+            
+            if table.getn(gossipAvailableQuests) > 0 then
+                local availableFields = 5;
+                local baseIndex = (i - 1) * availableFields + 1;
+                questTitle = gossipAvailableQuests[baseIndex];
+                isTrivial = gossipAvailableQuests[baseIndex + 2];
+                isDaily = gossipAvailableQuests[baseIndex + 3];
+                isRepeatable = gossipAvailableQuests[baseIndex + 4];
+            else
+                questTitle = GetAvailableTitle(i);
+                isDaily = false;
+                isRepeatable = false;
+                isTrivial = IsAvailableQuestTrivial(i);
+            end
+            
+            if DialogUI_Config and DialogUI_Config.hideTrivialQuests and isTrivial then
+                -- Пропускаем тривиальные задания
+            elseif questTitle and questTitle ~= "" then
+                local displayText
+                if (buttonIndex <= 9) then
+                    displayText = buttonIndex .. ".  " .. questTitle
+                else
+                    displayText = questTitle
+                end
+                
+                DQuestTitleButton_SetText(questTitleButton, displayText, buttonIndex)
+                
+                -- Устанавливаем иконку для доступного задания
+                local iconTexture = getglobal(questTitleButton:GetName() .. "QuestIcon");
+                if iconTexture then
+                    iconTexture:SetTexCoord(0, 1, 0, 1);
+                    iconTexture:SetWidth(24);
+                    iconTexture:SetHeight(24);
+                    
+                    if isDaily then
+                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\DailyQuest");
+                    elseif isRepeatable then
+                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\repeatableQuestIcon");
+                    else
+                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\availableQuestIcon");
+                    end
+                end
+                
+                questTitleButton:SetID(i);
+                questTitleButton.isActive = 0;
+                questTitleButton.type = "Available";
+                questTitleButton.isGossip = (table.getn(gossipAvailableQuests) > 0);
+                questTitleButton.isDaily = isDaily;
+                questTitleButton.isRepeatable = isRepeatable;
+                questTitleButton:Show();
+                
+                if (buttonIndex > 1) then
+                    questTitleButton:SetPoint("TOPLEFT", "DQuestTitleButton" .. (buttonIndex - 1), "BOTTOMLEFT", 0, -5);
+                end
+                
+                buttonIndex = buttonIndex + 1;
+            end
+        end
+    end
+
+    -- Скрываем неиспользуемые кнопки
     for i = buttonIndex, MAX_NUM_QUESTS, 1 do
         local btn = getglobal("DQuestTitleButton" .. i);
         if btn then btn:Hide(); end
@@ -992,7 +968,7 @@ function DQuestTitleButton_SetText(button, text, buttonIndex)
     -- Разрешаем перенос слов
     fontString:SetWordWrap(true)
     
-    -- Устанавливаем максимальную ширину для переноса (360px - место для иконки и отступов)
+    -- Устанавливаем максимальную ширину для переноса
     fontString:SetWidth(360)
     
     -- Принудительно вычисляем размеры
@@ -1003,19 +979,20 @@ function DQuestTitleButton_SetText(button, text, buttonIndex)
     local textHeight = fontString:GetStringHeight()
     
     -- Минимальная высота кнопки 24px, но если текст длинный - расширяем
-    local newHeight = math.max(24, textHeight + 8) -- +8 для отступов
+    local newHeight = math.max(24, textHeight + 8)
     
     -- Устанавливаем новую высоту кнопки
     button:SetHeight(newHeight)
     
-    -- Обновляем фоновую текстуру
+    -- Обновляем фоновую текстуру (но НЕ иконку!)
     local bg = getglobal(button:GetName() .. "ProgressBackground")
     if bg then
         bg:SetWidth(math.min(textWidth + 45, 400))
         bg:SetHeight(newHeight)
     end
     
-    -- Обновляем позиционирование следующих кнопок будет выполнено в цикле создания кнопок
+    -- ИСПРАВЛЕНО: Не меняем размер иконки!
+    -- Иконка должна оставаться 24x24, как задано в XML
 end
 
 -- Функция для обновления размера фона под текстом квеста
@@ -1597,53 +1574,43 @@ function DQuestFrame_OnCancel()
 end
 
 function UpdateQuestIcons()
-    local numActiveQuests = GetNumActiveQuests();
-    local numAvailableQuests = GetNumAvailableQuests();
-
-    -- Обновляем иконки для активных квестов
-    for i = 1, numActiveQuests do
+    for i = 1, MAX_NUM_QUESTS do
         local button = getglobal("DQuestTitleButton"..i);
-        if button and button:IsVisible() then
-            local iconTexture = button:GetRegions();
-            if iconTexture and iconTexture.SetTexture then
-                if button.isComplete then
-                    -- Выполненный квест
-                    if button.isDaily then
-                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CompleteDailyQuest");
-                    elseif button.isWeekly then
-                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\WeeklyQuest");
-                    else
-                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\completeQuestIcon");
-                    end
+        if not button or not button:IsVisible() then break end
+        
+        local iconTexture = getglobal(button:GetName() .. "QuestIcon");
+        if not iconTexture then break end
+        
+        iconTexture:SetTexCoord(0, 1, 0, 1);
+        iconTexture:SetWidth(24);
+        iconTexture:SetHeight(24);
+        
+        if button.type == "Active" then
+            -- Активный квест (в процессе выполнения)
+            if button.isComplete then
+                -- Выполнен - можно сдать
+                if button.isDaily then
+                    iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CompleteDailyQuest");
                 else
-                    -- Активный квест
-                    if button.isDaily then
-                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\DailyQuest");
-                    elseif button.isWeekly then
-                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\WeeklyQuest");
-                    else
-                        iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\incompleteQuestIcon");
-                    end
+                    iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\completeQuestIcon");
                 end
-            end
-        end
-    end
-
-    -- Обновляем иконки для доступных квестов
-    for i = (numActiveQuests + 1), (numActiveQuests + numAvailableQuests) do
-        local button = getglobal("DQuestTitleButton"..i);
-        if button and button:IsVisible() then
-            local iconTexture = button:GetRegions();
-            if iconTexture and iconTexture.SetTexture then
+            else
+                -- Не выполнен - в процессе
                 if button.isDaily then
                     iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\DailyQuest");
-                elseif button.isWeekly then
-                    iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\WeeklyQuest");
-                elseif button.isRepeatable then
-                    iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\repeatableQuestIcon");
                 else
-                    iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\availableQuestIcon");
+                    iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\incompleteQuestIcon");
                 end
+            end
+            
+        elseif button.type == "Available" then
+            -- Доступный квест (можно взять)
+            if button.isDaily then
+                iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\DailyQuest");
+            elseif button.isRepeatable then
+                iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\repeatableQuestIcon");
+            else
+                iconTexture:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\availableQuestIcon");
             end
         end
     end

@@ -163,6 +163,8 @@
 							</Offset>
 						</Anchor>
 					</Anchors>
+					<!-- ИСПРАВЛЕНО: Запрещаем растягивание текстуры -->
+					<TexCoords left="0" right="1" top="0" bottom="1" />
 				</Texture>
 			</Layer>
 		</Layers>
