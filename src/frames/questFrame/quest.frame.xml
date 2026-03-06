@@ -489,8 +489,8 @@
                                         </Anchors>
                                         <Scripts>
                                             <OnLoad>
-                                                SmallMoneyFrame_OnLoad();
-                                                MoneyFrame_SetType("STATIC");
+                                                DUI_SmallMoneyFrame_OnLoad();
+                                                DUI_MoneyFrame_SetType("STATIC");
                                             </OnLoad>
                                         </Scripts>
                                     </Frame>

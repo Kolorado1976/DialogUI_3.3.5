@@ -1,41 +1,37 @@
-MONEY_ICON_WIDTH = 19;
-MONEY_ICON_WIDTH_SMALL = 13;
+-- DialogueUI Money Frame
+-- Полностью изолированная версия для WoW 3.3.5
 
-MONEY_BUTTON_SPACING = -4;
-MONEY_BUTTON_SPACING_SMALL = -4;
+DUI_MONEY_ICON_WIDTH = 19;
+DUI_MONEY_ICON_WIDTH_SMALL = 13;
+DUI_MONEY_BUTTON_SPACING = -4;
+DUI_MONEY_BUTTON_SPACING_SMALL = -4;
+DUI_COPPER_PER_SILVER = 100;
+DUI_SILVER_PER_GOLD = 100;
+DUI_COPPER_PER_GOLD = DUI_COPPER_PER_SILVER * DUI_SILVER_PER_GOLD;
+DUI_COIN_BUTTON_WIDTH = 32;
 
-COPPER_PER_SILVER = 100;
-SILVER_PER_GOLD = 100;
-COPPER_PER_GOLD = COPPER_PER_SILVER * SILVER_PER_GOLD;
-
-COIN_BUTTON_WIDTH = 32;
-
-MoneyTypeInfo = { };
-MoneyTypeInfo["PLAYER"] = {
+DUI_MoneyTypeInfo = {};
+DUI_MoneyTypeInfo["PLAYER"] = {
     UpdateFunc = function()
         return (GetMoney() - GetCursorMoney() - GetPlayerTradeMoney());
     end,
-
     PickupFunc = function(amount)
         PickupPlayerMoney(amount);
     end,
-
     DropFunc = function()
         DropCursorMoney();
     end,
-
     collapse = 1,
     canPickup = 1,
     showSmallerCoins = "Backpack"
 };
-MoneyTypeInfo["STATIC"] = {
+DUI_MoneyTypeInfo["STATIC"] = {
     UpdateFunc = function()
         return this.staticMoney;
     end,
-
     collapse = 1,
 };
-MoneyTypeInfo["AUCTION"] = {
+DUI_MoneyTypeInfo["AUCTION"] = {
     UpdateFunc = function()
         return this.staticMoney;
     end,
@@ -44,143 +40,127 @@ MoneyTypeInfo["AUCTION"] = {
     collapse = 1,
     truncateSmallCoins = nil,
 };
-MoneyTypeInfo["PLAYER_TRADE"] = {
+DUI_MoneyTypeInfo["PLAYER_TRADE"] = {
     UpdateFunc = function()
         return GetPlayerTradeMoney();
     end,
-
     PickupFunc = function(amount)
         PickupTradeMoney(amount);
     end,
-
     DropFunc = function()
         AddTradeMoney();
     end,
-
     collapse = 1,
     canPickup = 1,
 };
-MoneyTypeInfo["TARGET_TRADE"] = {
+DUI_MoneyTypeInfo["TARGET_TRADE"] = {
     UpdateFunc = function()
         return GetTargetTradeMoney();
     end,
-
     collapse = 1,
 };
-MoneyTypeInfo["SEND_MAIL"] = {
+DUI_MoneyTypeInfo["SEND_MAIL"] = {
     UpdateFunc = function()
         return GetSendMailMoney();
     end,
-
     PickupFunc = function(amount)
         PickupSendMailMoney(amount);
     end,
-
     DropFunc = function()
         AddSendMailMoney();
     end,
-
     collapse = nil,
     canPickup = 1,
     showSmallerCoins = "Backpack",
 };
-MoneyTypeInfo["SEND_MAIL_COD"] = {
+DUI_MoneyTypeInfo["SEND_MAIL_COD"] = {
     UpdateFunc = function()
         return GetSendMailCOD();
     end,
-
     PickupFunc = function(amount)
         PickupSendMailCOD(amount);
     end,
-
     DropFunc = function()
         AddSendMailCOD();
     end,
-
     collapse = 1,
     canPickup = 1,
 };
 
-function DialogUI_MoneyFrame_OnLoad()
-    -- ГАРАНТИРОВАННО устанавливаем moneyType и info ПЕРЕД всем остальным
-    this.moneyType = "PLAYER";
-    this.info = MoneyTypeInfo["PLAYER"];
-    this.staticMoney = 0;
+-- ИСПРАВЛЕНО: используем this вместо self для совместимости с WoW 3.3.5
+function DUI_MoneyFrame_OnLoad()
+    local frame = this; -- this указывает на фрейм в OnLoad
+    
+    frame.moneyType = "PLAYER";
+    frame.info = DUI_MoneyTypeInfo["PLAYER"];
+    frame.staticMoney = 0;
 
-    this:RegisterEvent("PLAYER_MONEY");
-    this:RegisterEvent("PLAYER_TRADE_MONEY");
-    this:RegisterEvent("TRADE_MONEY_CHANGED");
-    this:RegisterEvent("SEND_MAIL_MONEY_CHANGED");
-    this:RegisterEvent("SEND_MAIL_COD_CHANGED");
+    frame:RegisterEvent("PLAYER_MONEY");
+    frame:RegisterEvent("PLAYER_TRADE_MONEY");
+    frame:RegisterEvent("TRADE_MONEY_CHANGED");
+    frame:RegisterEvent("SEND_MAIL_MONEY_CHANGED");
+    frame:RegisterEvent("SEND_MAIL_COD_CHANGED");
 end
 
-function DialogUI_SmallMoneyFrame_OnLoad()
-    -- ГАРАНТИРОВАННО устанавливаем moneyType и info ПЕРЕД всем остальным
-    this.moneyType = "PLAYER";
-    this.info = MoneyTypeInfo["PLAYER"];
-    this.staticMoney = 0;
-    this.small = 1;
+function DUI_SmallMoneyFrame_OnLoad()
+    local frame = this;
+    
+    frame.moneyType = "PLAYER";
+    frame.info = DUI_MoneyTypeInfo["PLAYER"];
+    frame.staticMoney = 0;
+    frame.small = 1;
 
-    this:RegisterEvent("PLAYER_MONEY");
-    this:RegisterEvent("PLAYER_TRADE_MONEY");
-    this:RegisterEvent("TRADE_MONEY_CHANGED");
-    this:RegisterEvent("SEND_MAIL_MONEY_CHANGED");
-    this:RegisterEvent("SEND_MAIL_COD_CHANGED");
+    frame:RegisterEvent("PLAYER_MONEY");
+    frame:RegisterEvent("PLAYER_TRADE_MONEY");
+    frame:RegisterEvent("TRADE_MONEY_CHANGED");
+    frame:RegisterEvent("SEND_MAIL_MONEY_CHANGED");
+    frame:RegisterEvent("SEND_MAIL_COD_CHANGED");
 end
 
--- Безопасная версия установки типа
--- ИСПРАВЛЕНО: переименован параметр 'type' в 'moneyType' чтобы избежать конфликта с функцией type()
-function DialogUI_MoneyFrame_SetTypeSafe(moneyType)
+function DUI_MoneyFrame_SetTypeSafe(moneyType)
+    local frame = this;
+    
     if not moneyType then
         moneyType = "PLAYER";
     end
 
-    -- ИСПРАВЛЕНО: используем typeof вместо type для проверки типа
     local typeOfArg = type(moneyType)
 
-    -- Если передан тип как строка
     if typeOfArg == "string" then
-        local info = MoneyTypeInfo[moneyType];
+        local info = DUI_MoneyTypeInfo[moneyType];
         if info then
-            this.info = info;
-            this.moneyType = moneyType;
+            frame.info = info;
+            frame.moneyType = moneyType;
         else
-            -- Если тип не найден, используем PLAYER
-            this.info = MoneyTypeInfo["PLAYER"];
-            this.moneyType = "PLAYER";
+            frame.info = DUI_MoneyTypeInfo["PLAYER"];
+            frame.moneyType = "PLAYER";
         end
-    -- Если передана таблица (от другого аддона)
     elseif typeOfArg == "table" then
-        -- Пытаемся использовать переданную таблицу как info
-        this.info = moneyType;
-        -- Пытаемся определить тип из таблицы
+        frame.info = moneyType;
         if moneyType.moneyType and type(moneyType.moneyType) == "string" then
-            this.moneyType = moneyType.moneyType;
+            frame.moneyType = moneyType.moneyType;
         else
-            this.moneyType = "PLAYER";
+            frame.moneyType = "PLAYER";
         end
 
-        -- Добавляем недостающие поля если их нет
-        if not this.info.UpdateFunc then
-            this.info.UpdateFunc = function() 
+        if not frame.info.UpdateFunc then
+            frame.info.UpdateFunc = function() 
                 return GetMoney(); 
             end;
         end
-        if this.info.collapse == nil then
-            this.info.collapse = 1;
+        if frame.info.collapse == nil then
+            frame.info.collapse = 1;
         end
     else
-        -- По умолчанию используем PLAYER
-        this.info = MoneyTypeInfo["PLAYER"];
-        this.moneyType = "PLAYER";
+        frame.info = DUI_MoneyTypeInfo["PLAYER"];
+        frame.moneyType = "PLAYER";
     end
 
-    local frameName = this:GetName();
+    local frameName = frame:GetName();
     if not frameName then return; end
 
-    local info = this.info;
+    local info = frame.info;
 
-    -- Безопасная установка кликабельности кнопок
     local goldButton = getglobal(frameName .. "GoldButton");
     local silverButton = getglobal(frameName .. "SilverButton");
     local copperButton = getglobal(frameName .. "CopperButton");
@@ -195,75 +175,83 @@ function DialogUI_MoneyFrame_SetTypeSafe(moneyType)
         if copperButton then copperButton:EnableMouse(false); end
     end
 
-    DMoneyFrame_UpdateMoney();
+    DUI_MoneyFrame_UpdateMoney(frame);
 end
 
-function DialogUI_MoneyFrame_OnEvent()
-    -- Проверяем наличие info и видимость фрейма
-    if not this or not this.info or not this:IsVisible() then
+function DUI_MoneyFrame_SetType(moneyType)
+    DUI_MoneyFrame_SetTypeSafe(moneyType);
+end
+
+function DUI_MoneyFrame_OnEvent(event)
+    local frame = this;
+    
+    if not frame or not frame.info or not frame:IsVisible() then
         return;
     end
 
-    if (event == "PLAYER_MONEY" and this.moneyType == "PLAYER") then
-        DMoneyFrame_UpdateMoney();
-    elseif (event == "PLAYER_TRADE_MONEY" and (this.moneyType == "PLAYER" or this.moneyType == "PLAYER_TRADE")) then
-        DMoneyFrame_UpdateMoney();
-    elseif (event == "TRADE_MONEY_CHANGED" and this.moneyType == "TARGET_TRADE") then
-        DMoneyFrame_UpdateMoney();
-    elseif (event == "SEND_MAIL_MONEY_CHANGED" and (this.moneyType == "PLAYER" or this.moneyType == "SEND_MAIL")) then
-        DMoneyFrame_UpdateMoney();
-    elseif (event == "SEND_MAIL_COD_CHANGED" and (this.moneyType == "PLAYER" or this.moneyType == "SEND_MAIL_COD")) then
-        DMoneyFrame_UpdateMoney();
+    if (event == "PLAYER_MONEY" and frame.moneyType == "PLAYER") then
+        DUI_MoneyFrame_UpdateMoney(frame);
+    elseif (event == "PLAYER_TRADE_MONEY" and (frame.moneyType == "PLAYER" or frame.moneyType == "PLAYER_TRADE")) then
+        DUI_MoneyFrame_UpdateMoney(frame);
+    elseif (event == "TRADE_MONEY_CHANGED" and frame.moneyType == "TARGET_TRADE") then
+        DUI_MoneyFrame_UpdateMoney(frame);
+    elseif (event == "SEND_MAIL_MONEY_CHANGED" and (frame.moneyType == "PLAYER" or frame.moneyType == "SEND_MAIL")) then
+        DUI_MoneyFrame_UpdateMoney(frame);
+    elseif (event == "SEND_MAIL_COD_CHANGED" and (frame.moneyType == "PLAYER" or frame.moneyType == "SEND_MAIL_COD")) then
+        DUI_MoneyFrame_UpdateMoney(frame);
     end
 end
 
--- ИСПРАВЛЕНО: переименован параметр 'type' в 'moneyType'
-function DialogUI_MoneyFrame_SetType(moneyType)
-    MoneyFrame_SetTypeSafe(moneyType);
-end
-
--- Update the money shown in a money frame
-function DialogUI_DMoneyFrame_UpdateMoney()
-    -- Проверяем наличие this
-    if not this then return; end
-
-    -- ГАРАНТИРОВАННО создаем info и moneyType если их нет
-    if not this.info then
-        this.info = MoneyTypeInfo["PLAYER"];
+-- ИСПРАВЛЕНО: принимаем frame как параметр или используем this
+function DUI_MoneyFrame_UpdateMoney(frame)
+    -- Если frame не передан, используем this (для вызовов из XML)
+    if not frame then
+        frame = this;
     end
-    if not this.moneyType then
-        this.moneyType = "PLAYER";
+    
+    if not frame then return; end
+
+    if not frame.info then
+        frame.info = DUI_MoneyTypeInfo["PLAYER"];
+    end
+    if not frame.moneyType then
+        frame.moneyType = "PLAYER";
     end
 
     local money = 0;
-    if this.info and this.info.UpdateFunc then
-        -- Безопасный вызов функции обновления
-        local success, result = pcall(this.info.UpdateFunc);
+    if frame.info and frame.info.UpdateFunc then
+        -- Сохраняем текущий this и устанавливаем frame как this для UpdateFunc
+        local oldThis = this;
+        this = frame;
+        
+        local success, result = pcall(frame.info.UpdateFunc);
+        
+        this = oldThis;
+        
         if success then
             money = result or 0;
         else
-            money = this.staticMoney or GetMoney(); -- fallback
+            money = frame.staticMoney or GetMoney();
         end
     else
-        money = this.staticMoney or GetMoney();
+        money = frame.staticMoney or GetMoney();
     end
 
-    DMoneyFrame_Update(this:GetName(), money);
+    DUI_MoneyFrame_UpdateFrame(frame:GetName(), money);
 
-    if this.hasPickup == 1 then
+    if frame.hasPickup == 1 then
         UpdateCoinPickupFrame(money);
     end
 end
 
-function DialogUI_DMoneyFrame_Update(frameName, money)
+function DUI_MoneyFrame_UpdateFrame(frameName, money)
     if not frameName then return; end
 
     local frame = getglobal(frameName);
     if not frame then return; end
 
-    -- ГАРАНТИРОВАННО создаем info если нужно
     if not frame.info then
-        frame.info = MoneyTypeInfo["PLAYER"];
+        frame.info = DUI_MoneyTypeInfo["PLAYER"];
         frame.moneyType = "PLAYER";
     end
     if not frame.moneyType then
@@ -272,29 +260,25 @@ function DialogUI_DMoneyFrame_Update(frameName, money)
 
     local info = frame.info;
 
-    -- Breakdown the money into denominations
-    local gold = floor(money / (COPPER_PER_SILVER * SILVER_PER_GOLD));
-    local silver = floor((money - (gold * COPPER_PER_SILVER * SILVER_PER_GOLD)) / COPPER_PER_SILVER);
-    local copper = mod(money, COPPER_PER_SILVER);
+    local gold = floor(money / (DUI_COPPER_PER_SILVER * DUI_SILVER_PER_GOLD));
+    local silver = floor((money - (gold * DUI_COPPER_PER_SILVER * DUI_SILVER_PER_GOLD)) / DUI_COPPER_PER_SILVER);
+    local copper = mod(money, DUI_COPPER_PER_SILVER);
 
     local goldButton = getglobal(frameName.."GoldButton");
     local silverButton = getglobal(frameName.."SilverButton");
     local copperButton = getglobal(frameName.."CopperButton");
 
-    -- Проверяем существование кнопок
     if not goldButton or not silverButton or not copperButton then
         return;
     end
 
-    local iconWidth = MONEY_ICON_WIDTH;
-    local spacing = MONEY_BUTTON_SPACING;
+    local iconWidth = DUI_MONEY_ICON_WIDTH;
+    local spacing = DUI_MONEY_BUTTON_SPACING;
     if ( frame.small ) then
-        iconWidth = MONEY_ICON_WIDTH_SMALL;
-        spacing = MONEY_BUTTON_SPACING_SMALL;
+        iconWidth = DUI_MONEY_ICON_WIDTH_SMALL;
+        spacing = DUI_MONEY_BUTTON_SPACING_SMALL;
     end
 
-    -- Set values for each denomination
-        -- Set values for each denomination - используем FontString вместо кнопки
     local goldText = getglobal(frameName.."GoldButtonText");
     local silverText = getglobal(frameName.."SilverButtonText");
     local copperText = getglobal(frameName.."CopperButtonText");
@@ -326,10 +310,8 @@ function DialogUI_DMoneyFrame_Update(frameName, money)
     end
     copperButton:Show();
 
-    -- Store how much money the frame is displaying
     frame.staticMoney = money;
 
-    -- If not collapsable don't need to continue
     if ( not info.collapse ) then
         return;
     end
@@ -349,9 +331,8 @@ function DialogUI_DMoneyFrame_Update(frameName, money)
     end
 
     if ( silver > 0 or showLowerDenominations ) then
-        -- Exception if showLowerDenominations and fixedWidth
         if ( showLowerDenominations and info.fixedWidth ) then
-            silverButton:SetWidth(COIN_BUTTON_WIDTH);
+            silverButton:SetWidth(DUI_COIN_BUTTON_WIDTH);
         end
 
         width = width + silverButton:GetWidth();
@@ -366,13 +347,10 @@ function DialogUI_DMoneyFrame_Update(frameName, money)
         silverButton:Hide();
         goldButton:SetPoint("RIGHT", frameName.."SilverButton", "RIGHT", 0, 0);
     end
-	
 
-    -- Used if we're not showing lower denominations
     if ( (copper > 0 or showLowerDenominations or info.showSmallerCoins == "Backpack") and not truncateCopper) then
-        -- Exception if showLowerDenominations and fixedWidth
         if ( showLowerDenominations and info.fixedWidth ) then
-            copperButton:SetWidth(COIN_BUTTON_WIDTH);
+            copperButton:SetWidth(DUI_COIN_BUTTON_WIDTH);
         end
 
         width = width + copperButton:GetWidth();
@@ -388,7 +366,7 @@ function DialogUI_DMoneyFrame_Update(frameName, money)
     frame:SetWidth(width);
 end
 
-function DialogUI_SetMoneyFrameColor(frameName, r, g, b)
+function DUI_SetMoneyFrameColor(frameName, r, g, b)
     if not frameName then return; end
 
     local goldButton = getglobal(frameName.."GoldButton");
