@@ -105,37 +105,15 @@
                 this.hasItem = 1;
             </OnLoad>
             <OnEnter>
-				if ( this:GetAlpha() > 0 ) then
-					if DialogueUITooltip then
-						DialogueUITooltip:SetOwner(this, "ANCHOR_RIGHT");
-						if ( this.rewardType == "item" ) then
-							DialogueUITooltip:SetQuestItem(this.type, this:GetID());
-						elseif ( this.rewardType == "spell" ) then
-							DialogueUITooltip:SetQuestRewardSpell(this:GetID());
-						end
-						DialogueUITooltip:Show();
-					else
-						-- Fallback
-						GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
-						if ( this.rewardType == "item" ) then
-							GameTooltip:SetQuestItem(this.type, this:GetID());
-						elseif ( this.rewardType == "spell" ) then
-							GameTooltip:SetQuestRewardSpell(this:GetID());
-						end
-						GameTooltip:Show();
-					end
-				end
-				CursorUpdate();
-			</OnEnter>
-			<OnLeave>
-				if DialogueUITooltip then
-					DialogueUITooltip:Hide();
-				end
-				GameTooltip:Hide();
-				ResetCursor();
-			</OnLeave>
+                DQuestItem_OnEnter();
+            </OnEnter>
+            <OnLeave>
+                DQuestItem_OnLeave();
+            </OnLeave>
             <OnUpdate>
-                CursorUpdate();
+                if this then
+					CursorUpdate(this);
+				end
             </OnUpdate>
             <OnClick>
                 DQuestItem_OnClick();
