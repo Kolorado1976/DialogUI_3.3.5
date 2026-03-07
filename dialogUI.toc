@@ -1,7 +1,7 @@
 ## Interface: 30300
 ## Title: DialogUI
 ## Author: Sxus, Kasper
-## Version: 1.1.0
+## Version: 2.1
 ## DefaultState: Enabled
 ## LoadOnDemand: 0
 ## Notes: Addon made for an immersive questing experience in WotLK 3.3.5 client, consider it a WotLK+ frame.
@@ -24,6 +24,8 @@ src\frames\uiPanelTemplate\ui.panel.template.lua
 src\frames\uiPanelTemplate\ui.panel.template.xml
 src\frames\uiPanelTemplate\ui.panel.template.button.xml
 
+src\frames\tooltip.custom.lua
+
 # Quest frame (loaded first to provide basic functions)
 src\frames\questFrame\quest.frame.lua
 src\frames\questFrame\quest.frame.template.xml
@@ -37,7 +39,12 @@ src\frames\gossipFrame\gossip.frame.xml
 src\modules\dynamicCamera\camera.module.lua
 src\modules\dynamicCamera\camera.config.lua
 
+# Book/Item viewer
+src\frames\book\BookUI.lua
+
 # Configuration frame (loaded last to override basic functions)
 src\frames\configFrame\config.frame.lua
 src\frames\configFrame\config.frame.xml
+
+
 

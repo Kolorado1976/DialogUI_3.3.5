@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local DEBUG_MODE = true
+local DEBUG_MODE = false
 
 local function DebugMsg(...)
     if DEBUG_MODE then
@@ -491,7 +491,6 @@ function DGossipFrameUpdate(availableQuests, activeQuests, gossipOptions)
 	DebugGossipIcons()
 end
 
-
 function DGossipFrame_OnKeyDown()
     local key = arg1
 
@@ -518,11 +517,13 @@ function DGossipFrame_OnKeyDown()
 
     if key == "ESCAPE" then
         CloseGossip()
+        DialogUI_SavePosition()  -- Сохраняем позицию!
         return
     end
 
+    -- ИСПРАВЛЕНО: SPACE выбирает первую доступную опцию (квест или gossip)
     if key == "SPACE" then
-        DGossipSelectOption(1)
+        DGossipSelectFirstAvailable()
         return
     end
 
@@ -543,6 +544,21 @@ function DGossipFrame_OnKeyDown()
             DGossipKeyFrame:SetScript("OnUpdate", nil)
         end
     end)
+end
+
+function DGossipSelectFirstAvailable()
+    if not DGossipFrame:IsVisible() then
+        return
+    end
+
+    -- Ищем первую видимую кнопку
+    for i = 1, NUMGOSSIPBUTTONS do
+        local titleButton = getglobal("DGossipTitleButton" .. i)
+        if titleButton and titleButton:IsVisible() and titleButton:GetText() and titleButton:GetText() ~= "" then
+            DGossipTitleButton_OnClick_Direct(titleButton)
+            return
+        end
+    end
 end
 
 function DGossipSelectOption(buttonIndex)
@@ -607,6 +623,15 @@ function DGossipTitleButton_OnClick_Direct(button)
             SelectGossipActiveQuest(buttonID);
             return
         end
+    end
+	
+	-- Проверка на открытие книги
+    if button.specialType == "book" or (button.text and string.find(string.lower(button.text), "читать")) then
+        -- Здесь можно добавить логику открытия книги
+        if DUIBookFrame then
+            DUIBookFrame:ShowUI();
+        end
+        return;
     end
 
     -- Для обычных gossip опций (не квесты)
@@ -694,6 +719,7 @@ function SetGossipButtonIcon(button, iconType, text)
         ["vendor"] = "vendorGossipIcon",
         ["trainer"] = "trainerGossipIcon",
         ["binder"] = "binderGossipIcon",
+		["barber"] = "barber",
         ["taxi"] = "flightGossipIcon",
         ["flight"] = "flightGossipIcon",
         ["banker"] = "bankerGossipIcon",
@@ -988,7 +1014,7 @@ function DetermineGossipIconTypeByText(optionText)
     elseif string.find(text, "военачальник") or string.find(text, "battlemaster") or string.find(text, "бой") then
         return "battlemaster"
     elseif string.find(text, "парикмахер") or string.find(text, "barber") then
-        return "gossip" -- нет специальной иконки
+        return "barber" -- нет специальной иконки
     elseif string.find(text, "словарь силы") or string.find(text, "lexicon") then
         return "gossip" -- нет специальной иконки
     elseif string.find(text, "дом офицеров") or string.find(text, "officer") then
@@ -1349,6 +1375,7 @@ function DialogUI_GetGossipIconPath(iconType, gossipText)
         ["stablemaster"] = "stablemasterGossipIcon",
         ["innkeeper"] = "innkeeperGossipIcon",
         ["mailbox"] = "mailboxGossipIcon",
+		["barber"] = "barber",
         ["guildMaster"] = "guildMasterGossipIcon",
         ["pettrainer"] = "pettrainerGossipIcon",
         ["weaponsTrainer"] = "weaponsTrainerGossipIcon",
@@ -1365,6 +1392,10 @@ function DialogUI_GetGossipIconPath(iconType, gossipText)
     
     -- Используем GetValidIconPath для проверки
     local validPath = GetValidIconPath(fullPath)
+	
+	if iconType == "barber" then
+		iconFile = "barber"
+	end
     
     if validPath then
         return validPath
@@ -1643,3 +1674,27 @@ end
 
 SlashCmdList["TESTICONS"] = TestIconPaths
 SLASH_TESTICONS1 = "/testicons"
+
+function TestBarberIcon()
+    DebugMsg("=== TESTING BARBER ICON ===")
+    
+    local paths = {
+        "Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\barber.blp",
+        "Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\barber.tga",
+        "Interface/AddOns/DialogUI/src/assets/art/icons/barber.blp",
+        "Interface/AddOns/DialogUI/src/assets/art/icons/barber.tga",
+    }
+    
+    for _, path in ipairs(paths) do
+        local tex = DGossipFrame:CreateTexture(nil, "ARTWORK")
+        tex:SetTexture(path)
+        local loaded = tex:GetTexture()
+        DebugMsg(string.format("Path: %s -> Loaded: %s", path, tostring(loaded ~= nil)))
+        tex:SetTexture(nil)
+    end
+    
+    DebugMsg("=== END TEST ===")
+end
+
+SlashCmdList["TESTBARBER"] = TestBarberIcon
+SLASH_TESTBARBER1 = "/testbarber"

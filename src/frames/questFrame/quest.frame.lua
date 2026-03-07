@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local DEBUG_MODE = true
+local DEBUG_MODE = false
 
 local function DebugMsg(...)
     if DEBUG_MODE then
@@ -16,6 +16,35 @@ QUEST_DESCRIPTION_GRADIENT_CPS = 40;
 QUESTINFO_FADE_IN = 1;
 
 UIPanelWindows["DQuestFrame"] = { area = "left", pushable = 0 };
+
+-- Инициализация кастомного тултипа если он еще не создан
+if not DialogueUITooltip then
+    -- Создаем тултип если tooltip.custom.lua не загрузился
+    local tooltip = CreateFrame("GameTooltip", "DialogueUITooltip", UIParent, "GameTooltipTemplate")
+    tooltip:SetFrameStrata("TOOLTIP")
+    tooltip:SetClampedToScreen(true)
+    
+    -- Убираем стандартный фон
+    for i = 1, tooltip:GetNumRegions() do
+        local region = select(i, tooltip:GetRegions())
+        if region:GetObjectType() == "Texture" then
+            local textureName = region:GetTexture()
+            if textureName and (string.find(textureName, "UI%-Tooltip%-Background") or 
+                               string.find(textureName, "UI%-Tooltip%-Border")) then
+                region:Hide()
+                region:SetTexture(nil)
+            end
+        end
+    end
+    
+    -- Устанавливаем кастомный фон
+    local bg = tooltip:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\parchment\\TooltipBackground-Temp")
+    bg:SetTexCoord(0, 1, 0, 1)
+    
+    DialogueUITooltip = tooltip
+end
 
 if not QuestFrame_SetAsLastShown then
     QuestFrame_SetAsLastShown = function() end
@@ -789,7 +818,7 @@ function DQuestFrameGreetingPanel_OnShow()
     
     SetFontColor(DGreetingText, "DarkBrown");
     
-    -- ИСПРАВЛЕНО: Скрываем текстовые заголовки
+    -- Скрываем текстовые заголовки
     DCurrentQuestsText:Hide();
     DAvailableQuestsText:Hide();
     DQuestGreetingFrameHorizontalBreak:Hide();
@@ -813,15 +842,59 @@ function DQuestFrameGreetingPanel_OnShow()
             local questTitle, isComplete, isDaily;
             
             if table.getn(gossipActiveQuests) > 0 then
-                local activeFields = 4;
+                -- Gossip API 3.3.5: проверяем структуру данных
+                local totalFields = table.getn(gossipActiveQuests);
+                local activeFields = math.floor(totalFields / numActiveQuests);
+                
                 local baseIndex = (i - 1) * activeFields + 1;
                 questTitle = gossipActiveQuests[baseIndex];
-                isComplete = gossipActiveQuests[baseIndex + 2];
-                isDaily = gossipActiveQuests[baseIndex + 3];
-            else
-                questTitle = GetActiveTitle(i);
-                isComplete = IsActiveQuestTrivial(i);
+                
+                -- Пробуем разные индексы для isComplete
+                if activeFields >= 4 then
+                    isComplete = gossipActiveQuests[baseIndex + 3]; -- 4-е поле
+                else
+                    isComplete = false;
+                end
+                
+                -- Проверяем isDaily если есть
                 isDaily = false;
+                if activeFields >= 5 then
+                    isDaily = gossipActiveQuests[baseIndex + 4]; -- 5-е поле
+                end
+            else
+                -- Стандартные QUEST_GREETING квесты
+                questTitle = GetActiveTitle(i);
+                isDaily = false;
+                
+                -- Проверяем завершённость через objective'ы квеста
+                isComplete = false;
+                local numEntries = GetNumQuestLogEntries();
+                
+                for q = 1, numEntries do
+                    local qTitle, qLevel, qTag, qGroup, qPlayer, qComplete = GetQuestLogTitle(q);
+                    
+                    if qTitle and qTitle == questTitle then
+                        -- Проверка через objective'ы квеста
+                        local numObjectives = GetNumQuestLeaderBoards(q);
+                        
+                        if numObjectives == 0 then
+                            -- Нет objective'ов - квест выполнен
+                            isComplete = true;
+                        else
+                            -- Проверяем все objective'ы
+                            local allFinished = true;
+                            for obj = 1, numObjectives do
+                                local text, type, finished = GetQuestLogLeaderBoard(obj, q);
+                                if not finished then
+                                    allFinished = false;
+                                    break;
+                                end
+                            end
+                            isComplete = allFinished;
+                        end
+                        break;
+                    end
+                end
             end
             
             if questTitle and questTitle ~= "" then
@@ -882,6 +955,7 @@ function DQuestFrameGreetingPanel_OnShow()
             local questTitle, isTrivial, isDaily, isRepeatable;
             
             if table.getn(gossipAvailableQuests) > 0 then
+                -- Gossip API 3.3.5: title, level, isLowLevel, isDaily, isRepeatable (5 полей)
                 local availableFields = 5;
                 local baseIndex = (i - 1) * availableFields + 1;
                 questTitle = gossipAvailableQuests[baseIndex];
@@ -1015,8 +1089,6 @@ function DQuestTitleButton_UpdateProgressBackground(button)
         end
     end
 end
-
--- Замените функцию DQuestFrame_OnKeyDown() на эту:
 
 function DQuestFrame_OnKeyDown()
     local key = arg1;
