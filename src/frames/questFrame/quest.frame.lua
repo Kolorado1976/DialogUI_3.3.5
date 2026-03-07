@@ -65,6 +65,218 @@ local COLORS = {
     Ivory = {0.87, 0.86, 0.75}
 };
 
+-- ==========================================
+-- Функции проверки возможности использования предметов
+-- ==========================================
+
+function DQuestFrame_CanUseItem(itemLink)
+    if not itemLink then return true end
+    
+    local tooltip = DialogueUITooltip
+    if not tooltip then
+        tooltip = CreateFrame("GameTooltip", "DQuestScanTooltip", UIParent, "GameTooltipTemplate")
+    end
+    
+    tooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    tooltip:SetHyperlink(itemLink)
+    
+    local canUse = true
+    local reason = nil
+    
+    -- Проверяем ВСЕ строки тултипа (и левые, и правые)
+    for i = 1, tooltip:NumLines() do
+        -- Проверяем ЛЕВУЮ сторону
+        local leftText = getglobal(tooltip:GetName() .. "TextLeft" .. i)
+        if leftText and leftText:IsShown() then
+            local text = leftText:GetText() or ""
+            local r, g, b = leftText:GetTextColor()
+            
+            DebugMsg(string.format("DEBUG Left %d: [%s] RGB(%.2f,%.2f,%.2f)", i, text, r, g, b))
+            
+            -- Красный текст в левой части (требования класса, уровня)
+            if r > 0.8 and g < 0.4 and b < 0.4 and i > 1 then
+                canUse = false
+                reason = "class"
+                DebugMsg(string.format("DEBUG: Red text in LEFT: [%s]", text))
+            end
+        end
+        
+        -- Проверяем ПРАВУЮ сторону (там тип брони!)
+        local rightText = getglobal(tooltip:GetName() .. "TextRight" .. i)
+        if rightText and rightText:IsShown() then
+            local text = rightText:GetText() or ""
+            local r, g, b = rightText:GetTextColor()
+            
+            DebugMsg(string.format("DEBUG Right %d: [%s] RGB(%.2f,%.2f,%.2f)", i, text, r, g, b))
+            
+            -- Тип брони обычно в правой части (Кожа, Кольчуга, Латы)
+            -- Если он красный — значит класс не может носить
+            if r > 0.8 and g < 0.4 and b < 0.4 then
+                canUse = false
+                reason = "armor_type"
+                DebugMsg(string.format("DEBUG: RED ARMOR TYPE: [%s]", text))
+            end
+        end
+    end
+    
+    tooltip:Hide()
+    return canUse, reason
+end
+
+function DQuestFrame_GetCurrencyOverflowIcon(parent)
+    local iconName = parent:GetName() .. "CurrencyOverflow"
+    local icon = getglobal(iconName)
+    
+    if not icon then
+        icon = parent:CreateTexture(iconName, "OVERLAY")
+        icon:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\CurrencyOverflow")
+        icon:SetWidth(30)
+        icon:SetHeight(30)
+        -- ИСПРАВЛЕНО: Привязываем к центру иконки предмета, а не к краю фрейма
+        icon:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 40, 10)
+        icon:Hide()
+    end
+    
+    return icon
+end
+
+function DQuestFrame_UpdateItemUsability(questItem, itemType, itemIndex)
+    local icon = DQuestFrame_GetCurrencyOverflowIcon(questItem)
+    local itemLink = GetQuestItemLink(itemType, itemIndex)
+    
+    -- Дебаг информация
+    DebugMsg(string.format("DEBUG: Updating item %d, type=%s, link=%s", 
+        itemIndex, tostring(itemType), tostring(itemLink or "nil")))
+    
+    if itemLink then
+        DebugMsg(string.format("DEBUG: Checking item usability for: %s", itemLink))
+        local canUse, reason = DQuestFrame_CanUseItem(itemLink)
+        
+        DebugMsg(string.format("DEBUG: CanUse=%s, reason=%s", 
+            tostring(canUse), tostring(reason or "nil")))
+        
+        if not canUse then
+            DebugMsg("DEBUG: Item cannot be used - SHOWING overflow icon")
+            icon:Show()
+            questItem.cannotUseReason = reason
+            
+            -- Проверяем что иконка действительно показалась
+            DebugMsg(string.format("DEBUG: Icon visibility after Show: %s, parent: %s", 
+                tostring(icon:IsVisible()), tostring(questItem:GetName())))
+        else
+            DebugMsg("DEBUG: Item can be used - HIDING overflow icon")
+            icon:Hide()
+            questItem.cannotUseReason = nil
+        end
+    else
+        DebugMsg(string.format("DEBUG: No item link for index %d - HIDING icon", itemIndex))
+        icon:Hide()
+        questItem.cannotUseReason = nil
+    end
+end
+
+function DQuestFrame_DebugCheckAllItems()
+    DebugMsg("=== DEBUG: Checking all quest items ===")
+    
+    -- Проверяем предметы прогресса
+    local numRequiredItems = GetNumQuestItems()
+    DebugMsg(string.format("Progress items count: %d", numRequiredItems))
+    
+    for i = 1, numRequiredItems do
+        local itemLink = GetQuestItemLink("required", i)
+        DebugMsg(string.format("Progress item %d: %s", i, tostring(itemLink)))
+        if itemLink then
+            local canUse, reason = DQuestFrame_CanUseItem(itemLink)
+            DebugMsg(string.format("  -> Can use: %s, reason: %s", 
+                tostring(canUse), tostring(reason or "none")))
+        end
+    end
+    
+    -- Проверяем предметы наград (выбор)
+    local numChoices = GetNumQuestChoices()
+    DebugMsg(string.format("Choice items count: %d", numChoices))
+    
+    for i = 1, numChoices do
+        local itemLink = GetQuestItemLink("choice", i)
+        DebugMsg(string.format("Choice item %d: %s", i, tostring(itemLink)))
+        if itemLink then
+            local canUse, reason = DQuestFrame_CanUseItem(itemLink)
+            DebugMsg(string.format("  -> Can use: %s, reason: %s", 
+                tostring(canUse), tostring(reason or "none")))
+        end
+    end
+    
+    -- Проверяем фиксированные награды
+    local numRewards = GetNumQuestRewards()
+    DebugMsg(string.format("Reward items count: %d", numRewards))
+    
+    for i = 1, numRewards do
+        local itemLink = GetQuestItemLink("reward", i)
+        DebugMsg(string.format("Reward item %d: %s", i, tostring(itemLink)))
+        if itemLink then
+            local canUse, reason = DQuestFrame_CanUseItem(itemLink)
+            DebugMsg(string.format("  -> Can use: %s, reason: %s", 
+                tostring(canUse), tostring(reason or "none")))
+        end
+    end
+    
+    DebugMsg("=== End debug check ===")
+end
+
+-- Добавляем слэш-команду для вызова
+SLASH_DEBUGITEMS1 = "/debugitems"
+SlashCmdList["DEBUGITEMS"] = function()
+    DQuestFrame_DebugCheckAllItems()
+end
+
+-- ==========================================
+-- Обработчики событий для предметов квеста
+-- ==========================================
+
+function DQuestItem_OnEnter()
+    if (this:GetAlpha() > 0) then
+        local tooltip = DialogueUITooltip
+        if not tooltip then 
+            tooltip = GameTooltip 
+        end
+        
+        tooltip:SetOwner(this, "ANCHOR_RIGHT")
+        
+        if (this.rewardType == "item") then
+            tooltip:SetQuestItem(this.type, this:GetID())
+            
+            -- Добавляем причину невозможности использования
+            if this.cannotUseReason then
+                tooltip:AddLine(" ")
+                local reasonText = "|cffff0000Вы не можете использовать этот предмет|r"
+                if this.cannotUseReason == "class" then
+                    reasonText = "|cffff0000Требуется другой класс|r"
+                elseif this.cannotUseReason == "skill" then
+                    reasonText = "|cffff0000Необходимо изучить навык|r"
+                elseif this.cannotUseReason == "level" then
+                    reasonText = "|cffff0000Недостаточный уровень|r"
+                end
+                tooltip:AddLine(reasonText)
+                tooltip:Show()
+            end
+        elseif (this.rewardType == "spell") then
+            tooltip:SetQuestRewardSpell(this:GetID())
+            tooltip:Show()
+        end
+        
+        tooltip:Show()
+    end
+    CursorUpdate()
+end
+
+function DQuestItem_OnLeave()
+    if DialogueUITooltip then
+        DialogueUITooltip:Hide()
+    end
+    GameTooltip:Hide()
+    ResetCursor()
+end
+
 -- ИСПРАВЛЕНО: Константы из Storyline
 local GOSSIP_AVAILABLE_FIELDS = 5;
 local GOSSIP_ACTIVE_FIELDS = 4;
@@ -578,22 +790,6 @@ function DQuestItem_OnClick()
 end
 
 function DQuestRewardItem_OnClick()
-    if (IsControlKeyDown()) then
-        if (this.rewardType ~= "spell") then
-            DressUpItemLink(GetQuestItemLink(this.type, this:GetID()));
-        end
-    elseif (IsShiftKeyDown()) then
-        if (ChatFrameEditBox:IsVisible()) then
-            ChatFrameEditBox:Insert(GetQuestItemLink(this.type, this:GetID()));
-        end
-    elseif (this.type == "choice") then
-        DQuestRewardItemHighlight:SetPoint("TOPLEFT", this, "TOPLEFT", -2, 5);
-        DQuestRewardItemHighlight:Show();
-        DQuestFrameRewardPanel.itemChoice = this:GetID();
-    end
-end
-
-function DQuestRewardItem_OnClick()
     -- Проверяем модификаторы клавиш (как в обычной DQuestItem_OnClick)
     if (IsControlKeyDown()) then
         if (this.rewardType ~= "spell") then
@@ -615,6 +811,67 @@ function DQuestRewardItem_OnClick()
             DQuestFrameRewardPanel.itemChoice = this:GetID();
         end
     end
+end
+
+function DQuestItem_OnEnter()
+    if (this:GetAlpha() > 0) then
+        local tooltip = DialogueUITooltip
+        if tooltip then
+            tooltip:SetOwner(this, "ANCHOR_RIGHT")
+            if (this.rewardType == "item") then
+                tooltip:SetQuestItem(this.type, this:GetID())
+                
+                -- Добавляем причину невозможности использования
+                if this.cannotUseReason then
+                    tooltip:AddLine(" ")
+                    local reasonText = "|cffff0000Вы не можете использовать этот предмет|r"
+                    if this.cannotUseReason == "class" then
+                        reasonText = "|cffff0000Требуется другой класс|r"
+                    elseif this.cannotUseReason == "skill" then
+                        reasonText = "|cffff0000Необходимо изучить навык|r"
+                    elseif this.cannotUseReason == "level" then
+                        reasonText = "|cffff0000Недостаточный уровень|r"
+                    end
+                    tooltip:AddLine(reasonText)
+                end
+                tooltip:Show()
+            elseif (this.rewardType == "spell") then
+                tooltip:SetQuestRewardSpell(this:GetID())
+                tooltip:Show()
+            end
+        else
+            -- Fallback
+            GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+            if (this.rewardType == "item") then
+                GameTooltip:SetQuestItem(this.type, this:GetID())
+                if this.cannotUseReason then
+                    GameTooltip:AddLine(" ")
+                    local reasonText = "|cffff0000Вы не можете использовать этот предмет|r"
+                    if this.cannotUseReason == "class" then
+                        reasonText = "|cffff0000Требуется другой класс|r"
+                    elseif this.cannotUseReason == "skill" then
+                        reasonText = "|cffff0000Необходимо изучить навык|r"
+                    elseif this.cannotUseReason == "level" then
+                        reasonText = "|cffff0000Недостаточный уровень|r"
+                    end
+                    GameTooltip:AddLine(reasonText)
+                end
+                GameTooltip:Show()
+            elseif (this.rewardType == "spell") then
+                GameTooltip:SetQuestRewardSpell(this:GetID())
+                GameTooltip:Show()
+            end
+        end
+    end
+    CursorUpdate()
+end
+
+function DQuestItem_OnLeave()
+    if DialogueUITooltip then
+        DialogueUITooltip:Hide()
+    end
+    GameTooltip:Hide()
+    ResetCursor()
 end
 
 function DQuestFrameProgressPanel_OnShow()
@@ -681,6 +938,7 @@ function DQuestFrameProgressItems_Update()
             SetItemButtonCount(requiredItem, numItems);
             SetItemButtonTexture(requiredItem, texture);
             requiredItem:Show();
+			DQuestFrame_UpdateItemUsability(requiredItem, requiredItem.type, i); 
             getglobal(questItemName .. i .. "Name"):SetText(name);
             
             local itemNameText = getglobal(questItemName .. i .. "Name");
@@ -818,11 +1076,7 @@ function DQuestFrameGreetingPanel_OnShow()
     
     SetFontColor(DGreetingText, "DarkBrown");
     
-<<<<<<< HEAD
     -- Скрываем текстовые заголовки
-=======
-    -- ИСПРАВЛЕНО: Скрываем текстовые заголовки
->>>>>>> 6200a8e58d7d8b040e541f469b9644c7f6d64d60
     DCurrentQuestsText:Hide();
     DAvailableQuestsText:Hide();
     DQuestGreetingFrameHorizontalBreak:Hide();
@@ -846,7 +1100,6 @@ function DQuestFrameGreetingPanel_OnShow()
             local questTitle, isComplete, isDaily;
             
             if table.getn(gossipActiveQuests) > 0 then
-<<<<<<< HEAD
                 -- Gossip API 3.3.5: проверяем структуру данных
                 local totalFields = table.getn(gossipActiveQuests);
                 local activeFields = math.floor(totalFields / numActiveQuests);
@@ -900,17 +1153,6 @@ function DQuestFrameGreetingPanel_OnShow()
                         break;
                     end
                 end
-=======
-                local activeFields = 4;
-                local baseIndex = (i - 1) * activeFields + 1;
-                questTitle = gossipActiveQuests[baseIndex];
-                isComplete = gossipActiveQuests[baseIndex + 2];
-                isDaily = gossipActiveQuests[baseIndex + 3];
-            else
-                questTitle = GetActiveTitle(i);
-                isComplete = IsActiveQuestTrivial(i);
-                isDaily = false;
->>>>>>> 6200a8e58d7d8b040e541f469b9644c7f6d64d60
             end
             
             if questTitle and questTitle ~= "" then
@@ -971,10 +1213,7 @@ function DQuestFrameGreetingPanel_OnShow()
             local questTitle, isTrivial, isDaily, isRepeatable;
             
             if table.getn(gossipAvailableQuests) > 0 then
-<<<<<<< HEAD
                 -- Gossip API 3.3.5: title, level, isLowLevel, isDaily, isRepeatable (5 полей)
-=======
->>>>>>> 6200a8e58d7d8b040e541f469b9644c7f6d64d60
                 local availableFields = 5;
                 local baseIndex = (i - 1) * availableFields + 1;
                 questTitle = gossipAvailableQuests[baseIndex];
@@ -1355,6 +1594,7 @@ function DQuestFrameItems_Update(questState)
             questItem:SetID(i)
             questItem:Show();
             questItem.rewardType = "item"
+			DQuestFrame_UpdateItemUsability(questItem, questItem.type, i)
             QuestFrame_SetAsLastShown(questItem, spacerFrame);
             
             local itemNameText = getglobal(questItemName .. index .. "Name");
@@ -1490,6 +1730,7 @@ function DQuestFrameItems_Update(questState)
             questItem:SetID(i)
             questItem:Show();
             questItem.rewardType = "item";
+			DQuestFrame_UpdateItemUsability(questItem, questItem.type, i)
             QuestFrame_SetAsLastShown(questItem, spacerFrame);
             
             local rewardNameText = getglobal(questItemName .. index .. "Name");
@@ -1895,3 +2136,18 @@ function DialogUI_ApplyAlphaToPanel(panel, alpha)
 		end
 	end
 end
+
+-- Временный тест - показать иконку на всех предметах
+function DQuestFrame_DebugShowAllIcons()
+    for i = 1, 10 do
+        local item = getglobal("DQuestRewardItem" .. i)
+        if item and item:IsVisible() then
+            local icon = DQuestFrame_GetCurrencyOverflowIcon(item)
+            icon:Show()
+            DebugMsg("Showed icon on " .. item:GetName())
+        end
+    end
+end
+
+SLASH_DEBUGICONS1 = "/debugicons"
+SlashCmdList["DEBUGICONS"] = DQuestFrame_DebugShowAllIcons
