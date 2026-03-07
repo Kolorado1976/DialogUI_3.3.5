@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 
 local function DebugMsg(...)
     if DEBUG_MODE then
@@ -818,7 +818,11 @@ function DQuestFrameGreetingPanel_OnShow()
     
     SetFontColor(DGreetingText, "DarkBrown");
     
+<<<<<<< HEAD
     -- Скрываем текстовые заголовки
+=======
+    -- ИСПРАВЛЕНО: Скрываем текстовые заголовки
+>>>>>>> 6200a8e58d7d8b040e541f469b9644c7f6d64d60
     DCurrentQuestsText:Hide();
     DAvailableQuestsText:Hide();
     DQuestGreetingFrameHorizontalBreak:Hide();
@@ -842,6 +846,7 @@ function DQuestFrameGreetingPanel_OnShow()
             local questTitle, isComplete, isDaily;
             
             if table.getn(gossipActiveQuests) > 0 then
+<<<<<<< HEAD
                 -- Gossip API 3.3.5: проверяем структуру данных
                 local totalFields = table.getn(gossipActiveQuests);
                 local activeFields = math.floor(totalFields / numActiveQuests);
@@ -895,6 +900,17 @@ function DQuestFrameGreetingPanel_OnShow()
                         break;
                     end
                 end
+=======
+                local activeFields = 4;
+                local baseIndex = (i - 1) * activeFields + 1;
+                questTitle = gossipActiveQuests[baseIndex];
+                isComplete = gossipActiveQuests[baseIndex + 2];
+                isDaily = gossipActiveQuests[baseIndex + 3];
+            else
+                questTitle = GetActiveTitle(i);
+                isComplete = IsActiveQuestTrivial(i);
+                isDaily = false;
+>>>>>>> 6200a8e58d7d8b040e541f469b9644c7f6d64d60
             end
             
             if questTitle and questTitle ~= "" then
@@ -955,7 +971,10 @@ function DQuestFrameGreetingPanel_OnShow()
             local questTitle, isTrivial, isDaily, isRepeatable;
             
             if table.getn(gossipAvailableQuests) > 0 then
+<<<<<<< HEAD
                 -- Gossip API 3.3.5: title, level, isLowLevel, isDaily, isRepeatable (5 полей)
+=======
+>>>>>>> 6200a8e58d7d8b040e541f469b9644c7f6d64d60
                 local availableFields = 5;
                 local baseIndex = (i - 1) * availableFields + 1;
                 questTitle = gossipAvailableQuests[baseIndex];

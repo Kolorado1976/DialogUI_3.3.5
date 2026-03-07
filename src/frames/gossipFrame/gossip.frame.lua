@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 
 local function DebugMsg(...)
     if DEBUG_MODE then
@@ -1673,6 +1673,7 @@ function TestIconPaths()
 end
 
 SlashCmdList["TESTICONS"] = TestIconPaths
+<<<<<<< HEAD
 SLASH_TESTICONS1 = "/testicons"
 
 function TestBarberIcon()
@@ -1698,3 +1699,6 @@ end
 
 SlashCmdList["TESTBARBER"] = TestBarberIcon
 SLASH_TESTBARBER1 = "/testbarber"
+=======
+SLASH_TESTICONS1 = "/testicons"
+>>>>>>> 6200a8e58d7d8b040e541f469b9644c7f6d64d60
