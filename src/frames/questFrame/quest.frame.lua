@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local DEBUG_MODE = true
+local DEBUG_MODE = false
 
 local function DebugMsg(...)
     if DEBUG_MODE then
@@ -1620,10 +1620,10 @@ function DQuestFrameItems_Update(questState)
             if (i > 1) then
                 if (mod(i, 2) == 1) then
                     -- ИСПРАВЛЕНО: Увеличен отступ между строками предметов
-                    questItem:SetPoint("TOPLEFT", questItemName .. (index - 2), "BOTTOMLEFT", 0, -30);
+                    questItem:SetPoint("TOPLEFT", questItemName .. (index - 2), "BOTTOMLEFT", 0, -25);
                 else
                     -- ИСПРАВЛЕНО: Увеличен отступ между предметами в строке
-                    questItem:SetPoint("TOPLEFT", questItemName .. (index - 1), "TOPRIGHT", 60, 0);
+                    questItem:SetPoint("TOPLEFT", questItemName .. (index - 1), "TOPRIGHT", 50, 0);
                 end
             else
                 -- ИСПРАВЛЕНО: Увеличен отступ от текста "Вы получите на выбор"
