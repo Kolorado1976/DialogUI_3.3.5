@@ -9,16 +9,44 @@ local TEXT_AREA_HEIGHT = 520
 
 -- Фрейм книги
 local BookFrame = nil
+local isLoading = false
+local updateTimer = nil
+local bookData = {}
 
 -- СОЗДАЕМ ШРИФТ ИЗ ВАШЕЙ ПАПКИ (БЕЗ ОБВОДКИ)
 local BookTextFont = CreateFont("DDialogBookTextFont")
-BookTextFont:SetFont("Interface\\AddOns\\DialogUI\\src\\assets\\font\\Expressway.ttf", 16, "") -- Убрал "OUTLINE"
+BookTextFont:SetFont("Interface\\AddOns\\DialogUI\\src\\assets\\font\\Expressway.ttf", 16, "")
+
+-- Функция для создания текстуры кнопки с фоном пергамента
+local function SetButtonParchmentBackground(button)
+    local bg = button:CreateTexture(nil, "BACKGROUND")
+    bg:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\parchment\\OptionBackground-Common")
+    bg:SetAllPoints(button)
+    bg:SetTexCoord(0, 1, 0, 1)
+    button.bgTexture = bg
+    
+    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\parchment\\OptionBackground-Hollow")
+    highlight:SetAllPoints(button)
+    highlight:SetTexCoord(0, 1, 0, 1)
+    highlight:SetBlendMode("ADD")
+    button:SetHighlightTexture(highlight)
+    
+    local pushed = button:CreateTexture(nil, "OVERLAY")
+    pushed:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\parchment\\OptionBackground-Grey")
+    pushed:SetAllPoints(button)
+    pushed:SetTexCoord(0, 1, 0, 1)
+    pushed:SetBlendMode("ADD")
+    pushed:SetAlpha(0.5)
+    button:SetPushedTexture(pushed)
+    
+    button:SetPushedTextOffset(2, -2)
+end
 
 -- Создание основного фрейма
 local function CreateBookFrame()
     if BookFrame then return BookFrame end
     
-    -- Основной фрейм
     local frame = CreateFrame("Frame", "DDialogBookFrame", UIParent)
     frame:SetSize(BOOK_FRAME_WIDTH, BOOK_FRAME_HEIGHT)
     frame:SetPoint("CENTER")
@@ -29,39 +57,52 @@ local function CreateBookFrame()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", function(self) self:StartMoving() end)
     frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    
+    frame:SetScript("OnHide", function(self)
+        isLoading = false
+        if updateTimer then
+            updateTimer:Hide()
+        end
+    end)
+    
     frame:Hide()
     
-    -- Регистрация для закрытия по Escape
     tinsert(UISpecialFrames, frame:GetName())
     
-    -- Фон - только ваш пергамент
     local parchment = frame:CreateTexture(nil, "BACKGROUND")
     parchment:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\book\\TextureKit-Parchment")
     parchment:SetAllPoints(frame)
     parchment:SetTexCoord(0, 1, 0, 1)
     
-    -- Заголовок (БЕЗ ОБВОДКИ)
+    -- Заголовок книги (БЕЗ ОБВОДКИ)
     local titleText = frame:CreateFontString(nil, "OVERLAY")
     titleText:SetPoint("TOP", frame, "TOP", 0, -40)
     titleText:SetTextColor(0.2, 0.1, 0.05, 1)
-    titleText:SetFont("Interface\\AddOns\\DialogUI\\src\\assets\\font\\Expressway.ttf", 20, "") -- Убрал "OUTLINE"
+    titleText:SetFont("Interface\\AddOns\\DialogUI\\src\\assets\\font\\Expressway.ttf", 20, "")
     frame.titleText = titleText
     
     -- ScrollFrame для текста
     local scrollFrame = CreateFrame("ScrollFrame", "DDialogBookScrollFrame", frame, "UIPanelScrollFrameTemplate")
     scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 40, -80)
-    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -40, 60)
+    scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -40, 100)
     
     -- Контейнер для текста
     local contentFrame = CreateFrame("Frame", nil, scrollFrame)
     contentFrame:SetSize(TEXT_AREA_WIDTH, TEXT_AREA_HEIGHT)
     scrollFrame:SetScrollChild(contentFrame)
     
-    -- Текстовое поле (БЕЗ ОБВОДКИ)
+    -- НОМЕР СТРАНИЦЫ над текстом, желтый, формат "~ 1 ~"
+    local pageText = contentFrame:CreateFontString(nil, "OVERLAY")
+    pageText:SetPoint("TOP", contentFrame, "TOP", 0, -5)
+    pageText:SetTextColor(1, 0.82, 0, 1)  -- Желтый цвет (как золото WoW)
+    pageText:SetFont("Interface\\AddOns\\DialogUI\\src\\assets\\font\\Expressway.ttf", 16, "")
+    frame.pageText = pageText
+    
+    -- Текстовое поле (под номером страницы)
     local bodyText = contentFrame:CreateFontString(nil, "OVERLAY")
-    bodyText:SetFontObject(BookTextFont)  -- В шрифте уже убрана обводка
-    bodyText:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 10, -10)
-    bodyText:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", -10, -10)
+    bodyText:SetFontObject(BookTextFont)
+    bodyText:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 10, -30)  -- Отступ сверху для номера страницы
+    bodyText:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", -10, -30)
     bodyText:SetJustifyH("LEFT")
     bodyText:SetJustifyV("TOP")
     bodyText:SetSpacing(5)
@@ -71,7 +112,6 @@ local function CreateBookFrame()
     frame.contentFrame = contentFrame
     frame.scrollFrame = scrollFrame
     
-    -- Кнопка закрытия
     local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -10)
     closeButton:SetScript("OnClick", function()
@@ -79,194 +119,240 @@ local function CreateBookFrame()
         CloseItemText()
     end)
     
-    -- Кнопка "Назад"
-    local prevButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    prevButton:SetSize(100, 25)
-    prevButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 50, 20)
-    prevButton:SetText("<< Назад")
+    -- Кнопка "Назад" - поднята выше, текст БЕЛЫЙ
+    local prevButton = CreateFrame("Button", nil, frame)
+    prevButton:SetSize(120, 30)
+    prevButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 50, 40)
     prevButton:SetScript("OnClick", function()
-        ItemTextPrevPage()
-        addon:UpdateBookText()
+        if ItemTextPrevPage then
+            ItemTextPrevPage()
+            isLoading = true
+        end
     end)
+    
+    local prevText = prevButton:CreateFontString(nil, "OVERLAY")
+    prevText:SetFont("Interface\\AddOns\\DialogUI\\src\\assets\\font\\Expressway.ttf", 14, "")
+    prevText:SetTextColor(1, 1, 1, 1)  -- БЕЛЫЙ цвет текста
+    prevText:SetText("<< Назад")
+    prevText:SetPoint("CENTER")
+    prevButton:SetFontString(prevText)
+    SetButtonParchmentBackground(prevButton)
     frame.prevButton = prevButton
     
-    -- Кнопка "Вперед"
-    local nextButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    nextButton:SetSize(100, 25)
-    nextButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -50, 20)
-    nextButton:SetText("Вперед >>")
+    -- Кнопка "Вперед" - поднята выше, текст БЕЛЫЙ
+    local nextButton = CreateFrame("Button", nil, frame)
+    nextButton:SetSize(120, 30)
+    nextButton:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -50, 40)
     nextButton:SetScript("OnClick", function()
-        ItemTextNextPage()
-        addon:UpdateBookText()
+        if ItemTextNextPage then
+            ItemTextNextPage()
+            isLoading = true
+        end
     end)
-    frame.nextButton = nextButton
     
-    -- Индикатор страницы (БЕЗ ОБВОДКИ)
-    local pageText = frame:CreateFontString(nil, "OVERLAY")
-    pageText:SetPoint("BOTTOM", frame, "BOTTOM", 0, 25)
-    pageText:SetTextColor(0.3, 0.2, 0.1, 1)
-    pageText:SetFont("Interface\\AddOns\\DialogUI\\src\\assets\\font\\Expressway.ttf", 14, "") -- Убрал "OUTLINE"
-    frame.pageText = pageText
+    local nextText = nextButton:CreateFontString(nil, "OVERLAY")
+    nextText:SetFont("Interface\\AddOns\\DialogUI\\src\\assets\\font\\Expressway.ttf", 14, "")
+    nextText:SetTextColor(1, 1, 1, 1)  -- БЕЛЫЙ цвет текста
+    nextText:SetText("Вперед >>")
+    nextText:SetPoint("CENTER")
+    nextButton:SetFontString(nextText)
+    SetButtonParchmentBackground(nextButton)
+    frame.nextButton = nextButton
     
     BookFrame = frame
     return BookFrame
 end
 
--- Функция для очистки HTML тегов
 local function CleanText(text)
     if not text then return "" end
-    
-    -- Удаляем HTML теги
     text = text:gsub("<[^>]+>", "")
-    
-    -- Заменяем специальные символы
     text = text:gsub("&nbsp;", " ")
     text = text:gsub("&amp;", "&")
     text = text:gsub("&quot;", '"')
     text = text:gsub("&lt;", "<")
     text = text:gsub("&gt;", ">")
-    
     return text
 end
 
--- Обновление текста из игры
 function addon:UpdateBookText()
     if not BookFrame or not BookFrame:IsShown() then return end
     
-    -- Получаем текст и очищаем его
-    local rawText = ItemTextGetText() or ""
-    local text = CleanText(rawText)
+    local itemName = ItemTextGetItem and ItemTextGetItem()
+    local rawText = ItemTextGetText and ItemTextGetText()
     
-    -- Получаем заголовок
-    local title = ItemTextGetItem() or "Книга"
+    if not itemName and bookData.title then
+        itemName = bookData.title
+    end
     
-    -- Обновляем заголовок
-    BookFrame.titleText:SetText(title)
+    if not rawText and bookData.text then
+        rawText = bookData.text
+    end
     
-    -- Обновляем текст
-    BookFrame.bodyText:SetText(text)
+    if not itemName then
+        return
+    end
     
-    -- Подгоняем высоту контейнера под текст
-    local textHeight = BookFrame.bodyText:GetStringHeight()
-    BookFrame.contentFrame:SetHeight(math.max(textHeight + 20, TEXT_AREA_HEIGHT))
+    local text = CleanText(rawText or "")
+    local title = itemName or "Книга"
     
-    -- Сбрасываем скролл наверх
-    BookFrame.scrollFrame:SetVerticalScroll(0)
+    bookData.title = title
+    bookData.text = text
+    bookData.page = ItemTextGetPage and ItemTextGetPage() or 1
+    bookData.totalPages = ItemTextGetNumPages and ItemTextGetNumPages() or 1
+    bookData.hasPrev = ItemTextHasPrevPage and ItemTextHasPrevPage() or false
+    bookData.hasNext = ItemTextHasNextPage and ItemTextHasNextPage() or false
     
-    -- Обновляем кнопки навигации
-    local hasPrev = ItemTextHasPrevPage and ItemTextHasPrevPage() or false
-    local hasNext = ItemTextHasNextPage and ItemTextHasNextPage() or false
+    if BookFrame.bodyText:GetText() ~= text or BookFrame.titleText:GetText() ~= title then
+        BookFrame.titleText:SetText(title)
+        BookFrame.bodyText:SetText(text)
+        
+        local textHeight = BookFrame.bodyText:GetStringHeight()
+        -- Добавляем отступ для номера страницы
+        BookFrame.contentFrame:SetHeight(math.max(textHeight + 50, TEXT_AREA_HEIGHT))
+        BookFrame.scrollFrame:SetVerticalScroll(0)
+    end
     
+    addon:UpdateNavigation()
+end
+
+function addon:UpdateNavigation()
+    if not BookFrame or not BookFrame:IsShown() then return end
+    
+    local hasPrev = bookData.hasPrev or false
+    local hasNext = bookData.hasNext or false
+    local currentPage = bookData.page or 1
+    local totalPages = bookData.totalPages or 1
+    
+    -- Получаем актуальные данные из API
+    if ItemTextHasPrevPage then
+        hasPrev = ItemTextHasPrevPage()
+        print("|cff00ff00[DialogUI] hasPrev:|r " .. tostring(hasPrev))
+    end
+    if ItemTextHasNextPage then
+        hasNext = ItemTextHasNextPage()
+    end
+    if ItemTextGetPage then
+        currentPage = ItemTextGetPage() or currentPage
+    end
+    if ItemTextGetNumPages then
+        totalPages = ItemTextGetNumPages() or totalPages
+    end
+    
+    -- Обновляем номер страницы в формате "~ 1 ~", желтый цвет
+    if totalPages > 1 then
+        BookFrame.pageText:SetText(string.format("~ %d ~", currentPage))
+        BookFrame.pageText:Show()
+    else
+        BookFrame.pageText:Hide()
+    end
+    
+    -- Кнопка Назад - показываем если есть предыдущая страница
     if hasPrev then
         BookFrame.prevButton:Show()
+        print("|cff00ff00[DialogUI] Показываю кнопку Назад|r")
     else
         BookFrame.prevButton:Hide()
     end
     
+    -- Кнопка Вперед - показываем если есть следующая страница
     if hasNext then
         BookFrame.nextButton:Show()
     else
         BookFrame.nextButton:Hide()
     end
-    
-    -- Обновляем индикатор страницы
-    if hasPrev or hasNext then
-        local page = ItemTextGetPage and ItemTextGetPage() or 1
-        local totalPages = ItemTextGetNumPages and ItemTextGetNumPages() or 1
-        BookFrame.pageText:SetText(string.format("Страница %d из %d", page, totalPages))
-        BookFrame.pageText:Show()
-    else
-        BookFrame.pageText:Hide()
-    end
 end
 
--- Функция открытия книги
+local function StartUpdateTimer()
+    if not updateTimer then
+        updateTimer = CreateFrame("Frame")
+    end
+    
+    local attempts = 0
+    updateTimer:Show()
+    updateTimer:SetScript("OnUpdate", function(self, elapsed)
+        attempts = attempts + 1
+        
+        if attempts % 5 == 0 then
+            addon:UpdateBookText()
+        end
+        
+        if attempts > 100 or not BookFrame or not BookFrame:IsShown() then
+            self:SetScript("OnUpdate", nil)
+            self:Hide()
+            isLoading = false
+        end
+    end)
+end
+
 local function ShowCustomBook()
-    print("|cff00ff00DialogUI: Открытие книги|r")
+    print("|cff00ff00[DialogUI] Открытие книги...|r")
+    
+    bookData = {}
     
     local frame = CreateBookFrame()
     
-    -- Получаем и очищаем текст
-    local rawText = ItemTextGetText() or "Загрузка текста..."
-    local text = CleanText(rawText)
-    local title = ItemTextGetItem() or "Книга"
+    isLoading = true
     
-    -- Устанавливаем текст
-    frame.titleText:SetText(title)
-    frame.bodyText:SetText(text)
-    
-    -- Подгоняем высоту
-    local textHeight = frame.bodyText:GetStringHeight()
-    frame.contentFrame:SetHeight(math.max(textHeight + 20, TEXT_AREA_HEIGHT))
-    
-    -- Обновляем навигацию
-    local hasPrev = ItemTextHasPrevPage and ItemTextHasPrevPage() or false
-    local hasNext = ItemTextHasNextPage and ItemTextHasNextPage() or false
-    
-    if hasPrev then
-        frame.prevButton:Show()
-    else
-        frame.prevButton:Hide()
-    end
-    
-    if hasNext then
-        frame.nextButton:Show()
-    else
-        frame.nextButton:Hide()
-    end
-    
-    if hasPrev or hasNext then
-        local page = ItemTextGetPage and ItemTextGetPage() or 1
-        local totalPages = ItemTextGetNumPages and ItemTextGetNumPages() or 1
-        frame.pageText:SetText(string.format("Страница %d из %d", page, totalPages))
-        frame.pageText:Show()
-    else
-        frame.pageText:Hide()
-    end
-    
-    -- Показываем фрейм
+    frame.titleText:SetText("Загрузка...")
+    frame.bodyText:SetText("Загрузка текста...")
+    frame.pageText:Hide()
+    frame.prevButton:Hide()
+    frame.nextButton:Hide()
     frame:Show()
     
-    -- Скрываем стандартный
+    StartUpdateTimer()
+end
+
+-- ПОЛНОЕ ОТКЛЮЧЕНИЕ СТАНДАРТНОГО ФРЕЙМА
+local function DisableDefaultBookFrame()
     if ItemTextFrame then
         ItemTextFrame:Hide()
+        ItemTextFrame:UnregisterAllEvents()
+        ItemTextFrame:SetScript("OnShow", nil)
+        ItemTextFrame:SetScript("OnEvent", nil)
+        ItemTextFrame:SetScript("OnHide", nil)
     end
-end
-
--- Переопределяем функции
-local function OverrideItemTextFunctions()
-    ItemTextFrame_Show = function()
+    
+    _G.ItemTextFrame_Show = function()
         ShowCustomBook()
     end
-    
-    if ItemTextFrame then
-        ItemTextFrame.Show = function()
-            ShowCustomBook()
-        end
-        
-        ItemTextFrame:HookScript("OnShow", function()
-            ShowCustomBook()
-        end)
-    end
-    
-    print("|cff00ff00DialogUI: Функции книги переопределены|r")
 end
 
--- Вызываем немедленно
-OverrideItemTextFunctions()
+DisableDefaultBookFrame()
 
--- И через события
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
-f:RegisterEvent("VARIABLES_LOADED")
-
+f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == "Blizzard_ItemText" or arg1 == addonName then
-            OverrideItemTextFunctions()
+            DisableDefaultBookFrame()
         end
-    elseif event == "VARIABLES_LOADED" then
-        OverrideItemTextFunctions()
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        DisableDefaultBookFrame()
+    end
+end)
+
+-- Обработчик событий книги
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("ITEM_TEXT_BEGIN")
+eventFrame:RegisterEvent("ITEM_TEXT_READY")
+eventFrame:RegisterEvent("ITEM_TEXT_CLOSED")
+
+eventFrame:SetScript("OnEvent", function(self, event, ...)
+    if event == "ITEM_TEXT_BEGIN" then
+        isLoading = true
+        if not BookFrame or not BookFrame:IsShown() then
+            ShowCustomBook()
+        end
+        
+    elseif event == "ITEM_TEXT_READY" then
+        if BookFrame and BookFrame:IsShown() then
+            addon:UpdateBookText()
+        end
+        
+    elseif event == "ITEM_TEXT_CLOSED" then
+        isLoading = false
     end
 end)
 
@@ -277,10 +363,10 @@ addon.BookFrame = {
         frame.titleText:SetText(title or "Книга")
         frame.bodyText:SetText(CleanText(text or ""))
         local textHeight = frame.bodyText:GetStringHeight()
-        frame.contentFrame:SetHeight(math.max(textHeight + 20, TEXT_AREA_HEIGHT))
+        frame.contentFrame:SetHeight(math.max(textHeight + 50, TEXT_AREA_HEIGHT))
+        frame.pageText:Hide()
         frame.prevButton:Hide()
         frame.nextButton:Hide()
-        frame.pageText:Hide()
         frame:Show()
     end,
     Hide = function() 
@@ -291,5 +377,8 @@ addon.BookFrame = {
     end,
     GetFrame = function() 
         return CreateBookFrame() 
+    end,
+    UpdateText = function()
+        addon:UpdateBookText()
     end
 }
