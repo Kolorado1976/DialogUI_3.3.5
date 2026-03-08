@@ -35,6 +35,7 @@
   <img src="https://raw.githubusercontent.com/Jslquintero/DialogUI/main/src/preview/Screenshot%20From%202025-06-18%2000-41-14.png" style="width: 30%; min-width: 200px;" />
   <img src="https://raw.githubusercontent.com/Jslquintero/DialogUI/main/src/preview/Screenshot%20From%202025-06-18%2000-42-06.png" style="width: 30%; min-width: 200px;" />
 </div>
+примерно так
 
 ## ⚡ Быстрый старт
 
@@ -58,7 +59,7 @@
 ## 🔧 Совместимость
 
 - ✅ **WOW WOTLK** (3.3.5)
-- ⚠️ Создан для англоязычного клиента (поддержка испанского может быть добавлена редактированием функций диалогов)
+- ⚠️ Создан для русскоязычного клиента 
 
 ## 🎨 Оригинальное вдохновение
 
