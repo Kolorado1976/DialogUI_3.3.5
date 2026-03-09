@@ -33,6 +33,55 @@
         </Scripts>
     </EditBox>
 
+    <!-- Font Button Template -->
+    <Button name="DConfigFontButtonTemplate" virtual="true">
+        <Size>
+            <AbsDimension x="110" y="28" />
+        </Size>
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture name="$parentBackground" file="Interface\AddOns\DialogUI\src\assets\art\parchment\OptionBackground-common">
+                    <Size>
+                        <AbsDimension x="110" y="28" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="CENTER" />
+                    </Anchors>
+                </Texture>
+            </Layer>
+            <Layer level="OVERLAY">
+                <!-- Галочка для выбранного шрифта -->
+                <Texture name="$parentCheck" file="Interface\Buttons\UI-CheckBox-Check" hidden="true">
+                    <Size>
+                        <AbsDimension x="16" y="16" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="LEFT">
+                            <Offset>
+                                <AbsDimension x="5" y="0" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </Texture>
+            </Layer>
+            <Layer level="ARTWORK">
+                <FontString name="$parentText" inherits="DQuestButtonTitleGossip" justifyH="CENTER">
+                    <Size>
+                        <AbsDimension x="90" y="20" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="CENTER">
+                            <Offset>
+                                <AbsDimension x="5" y="0" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <HighlightTexture file="Interface\AddOns\DialogUI\src\assets\art\parchment\ButtonHighlight-Gossip" alphaMode="ADD" />
+    </Button>
+
     <!-- Main Config Frame -->
     <Frame name="DConfigFrame" toplevel="true" parent="UIParent" movable="false" enableMouse="true" hidden="true">
         <Size>
@@ -97,12 +146,12 @@
                                 </FontString>
                                 
                                 <!-- Scale Label -->
-                                <FontString name="DConfigScaleLabel" inherits="DQuestButtonTitleGossip" text="Escala:" justifyH="LEFT">
+                                <FontString name="DConfigScaleLabel" inherits="DQuestButtonTitleGossip" text="Масштаб:" justifyH="LEFT">
                                     <Size>
                                         <AbsDimension x="345" y="20" />
                                     </Size>
                                     <Anchors>
-                                        <Anchor point="TOP" relativeTo="DConfigInfoText" relativePoint="BOTTOM">
+                                        <Anchor point="TOPLEFT" relativeTo="DConfigInfoText" relativePoint="BOTTOMLEFT">
                                             <Offset>
                                                 <AbsDimension x="0" y="-20" />
                                             </Offset>
@@ -111,12 +160,12 @@
                                 </FontString>
                                 
                                 <!-- Transparency Label -->
-                                <FontString name="DConfigAlphaLabel" inherits="DQuestButtonTitleGossip" text="Transparencia:" justifyH="LEFT">
+                                <FontString name="DConfigAlphaLabel" inherits="DQuestButtonTitleGossip" text="Прозрачность:" justifyH="LEFT">
                                     <Size>
                                         <AbsDimension x="345" y="20" />
                                     </Size>
                                     <Anchors>
-                                        <Anchor point="TOP" relativeTo="DConfigScaleLabel" relativePoint="BOTTOM">
+                                        <Anchor point="TOPLEFT" relativeTo="DConfigScaleLabel" relativePoint="BOTTOMLEFT">
                                             <Offset>
                                                 <AbsDimension x="0" y="-35" />
                                             </Offset>
@@ -125,12 +174,26 @@
                                 </FontString>
                                 
                                 <!-- Font Size Label -->
-                                <FontString name="DConfigFontLabel" inherits="DQuestButtonTitleGossip" text="Tamaño de Fuente:" justifyH="LEFT">
+                                <FontString name="DConfigFontLabel" inherits="DQuestButtonTitleGossip" text="Размер шрифта:" justifyH="LEFT">
                                     <Size>
                                         <AbsDimension x="345" y="20" />
                                     </Size>
                                     <Anchors>
-                                        <Anchor point="TOP" relativeTo="DConfigAlphaLabel" relativePoint="BOTTOM">
+                                        <Anchor point="TOPLEFT" relativeTo="DConfigAlphaLabel" relativePoint="BOTTOMLEFT">
+                                            <Offset>
+                                                <AbsDimension x="0" y="-35" />
+                                            </Offset>
+                                        </Anchor>
+                                    </Anchors>
+                                </FontString>
+
+                                <!-- Font Select Label -->
+                                <FontString name="DConfigFontSelectLabel" inherits="DQuestButtonTitleGossip" text="Шрифт:" justifyH="LEFT">
+                                    <Size>
+                                        <AbsDimension x="345" y="20" />
+                                    </Size>
+                                    <Anchors>
+                                        <Anchor point="TOPLEFT" relativeTo="DConfigFontLabel" relativePoint="BOTTOMLEFT">
                                             <Offset>
                                                 <AbsDimension x="0" y="-35" />
                                             </Offset>
@@ -143,9 +206,9 @@
                             <!-- Scale EditBox -->
                             <EditBox name="DConfigScaleEditBox" inherits="DConfigEditBoxTemplate">
                                 <Anchors>
-                                    <Anchor point="LEFT" relativeTo="DConfigScaleLabel" relativePoint="LEFT">
+                                    <Anchor point="LEFT" relativeTo="DConfigScaleLabel" relativePoint="RIGHT">
                                         <Offset>
-                                            <AbsDimension x="50" y="0" />
+                                            <AbsDimension x="10" y="0" />
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
@@ -159,9 +222,9 @@
                             <!-- Transparency EditBox -->
                             <EditBox name="DConfigAlphaEditBox" inherits="DConfigEditBoxTemplate">
                                 <Anchors>
-                                    <Anchor point="LEFT" relativeTo="DConfigAlphaLabel" relativePoint="LEFT">
+                                    <Anchor point="LEFT" relativeTo="DConfigAlphaLabel" relativePoint="RIGHT">
                                         <Offset>
-                                            <AbsDimension x="100" y="0" />
+                                            <AbsDimension x="10" y="0" />
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
@@ -175,9 +238,9 @@
                             <!-- Font Size EditBox -->
                             <EditBox name="DConfigFontEditBox" inherits="DConfigEditBoxTemplate">
                                 <Anchors>
-                                    <Anchor point="LEFT" relativeTo="DConfigFontLabel" relativePoint="LEFT">
+                                    <Anchor point="LEFT" relativeTo="DConfigFontLabel" relativePoint="RIGHT">
                                         <Offset>
-                                            <AbsDimension x="125" y="0" />
+                                            <AbsDimension x="10" y="0" />
                                         </Offset>
                                     </Anchor>
                                 </Anchors>
@@ -187,6 +250,68 @@
                                     </OnEnterPressed>
                                 </Scripts>
                             </EditBox>
+
+                            <!-- Font Selection Buttons - First Row -->
+                            <Button name="DConfigFontButton1" inherits="DConfigFontButtonTemplate">
+                                <Anchors>
+                                    <Anchor point="TOPLEFT" relativeTo="DConfigFontSelectLabel" relativePoint="BOTTOMLEFT">
+                                        <Offset>
+                                            <AbsDimension x="0" y="-15" />
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnClick>
+                                        DConfigFontButton_OnClick(1);
+                                    </OnClick>
+                                </Scripts>
+                            </Button>
+
+                            <Button name="DConfigFontButton2" inherits="DConfigFontButtonTemplate">
+                                <Anchors>
+                                    <Anchor point="LEFT" relativeTo="DConfigFontButton1" relativePoint="RIGHT">
+                                        <Offset>
+                                            <AbsDimension x="10" y="0" />
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnClick>
+                                        DConfigFontButton_OnClick(2);
+                                    </OnClick>
+                                </Scripts>
+                            </Button>
+
+                            <!-- Font Selection Buttons - Second Row -->
+                            <Button name="DConfigFontButton3" inherits="DConfigFontButtonTemplate">
+                                <Anchors>
+                                    <Anchor point="TOPLEFT" relativeTo="DConfigFontButton1" relativePoint="BOTTOMLEFT">
+                                        <Offset>
+                                            <AbsDimension x="0" y="-10" />
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnClick>
+                                        DConfigFontButton_OnClick(3);
+                                    </OnClick>
+                                </Scripts>
+                            </Button>
+
+                            <Button name="DConfigFontButton4" inherits="DConfigFontButtonTemplate">
+                                <Anchors>
+                                    <Anchor point="LEFT" relativeTo="DConfigFontButton3" relativePoint="RIGHT">
+                                        <Offset>
+                                            <AbsDimension x="10" y="0" />
+                                        </Offset>
+                                    </Anchor>
+                                </Anchors>
+                                <Scripts>
+                                    <OnClick>
+                                        DConfigFontButton_OnClick(4);
+                                    </OnClick>
+                                </Scripts>
+                            </Button>
                         </Frames>
                     </Frame>
                 </ScrollChild>
@@ -213,7 +338,7 @@
 
             <Button name="DConfigCloseButton" inherits="DUIPanelButtonTemplate" text="ЗАКРЫТЬ">
                 <Size>
-                    <AbsDimension x="100" y="35" />
+                    <AbsDimension x="180" y="35" />
                 </Size>
                 <Anchors>
                     <Anchor point="BOTTOM">
@@ -230,15 +355,15 @@
             </Button>
         </Frames>
         <Scripts>
-		<OnLoad>
-			DConfigFrame_OnLoad(self);
-		</OnLoad>
-		<OnShow>
-			DConfigFrame_OnShow(self);
-		</OnShow>
-		<OnHide>
-			DConfigFrame_OnHide(self);
-		</OnHide>
-	</Scripts>
+            <OnLoad>
+                DConfigFrame_OnLoad(self);
+            </OnLoad>
+            <OnShow>
+                DConfigFrame_OnShow(self);
+            </OnShow>
+            <OnHide>
+                DConfigFrame_OnHide(self);
+            </OnHide>
+        </Scripts>
     </Frame>
 </Ui>

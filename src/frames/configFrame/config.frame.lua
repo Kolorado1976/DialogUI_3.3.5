@@ -4,7 +4,16 @@
 DialogUI_Config = {
     scale = 1.0,        -- Масштаб фрейма (0.5 - 2.0)
     alpha = 1.0,        -- Прозрачность фрейма (0.1 - 1.0)
-    fontSize = 1.0      -- Множитель размера шрифта (0.5 - 2.0)
+    fontSize = 1.0,     -- Множитель размера шрифта (0.5 - 2.0)
+    fontFile = "frizqt___cyr.ttf"  -- Шрифт по умолчанию
+};
+
+-- Доступные шрифты
+local AVAILABLE_FONTS = {
+    { name = "Magistral", file = "frizqt___cyr.ttf" },
+    { name = "PTNarrow", file = "frizqt__.ttf" },
+    { name = "Arial", file = "ARIALN.ttf" },
+    { name = "Expressway", file = "Expressway.ttf" }
 };
 
 local COLORS = {
@@ -31,6 +40,7 @@ function DConfigFrame_OnLoad()
                     "• Масштаб: Изменение размера окон диалогов (от 0.5 до 2.0)\n" ..
                     "• Прозрачность: Настройка прозрачности фона (от 10% до 100%)\n" ..
                     "• Размер шрифта: Изменение размера текста в диалогах (от 0.5 до 2.0)\n" ..
+                    "• Шрифт: Выбор шрифта для текста в диалогах\n" ..
                     "• Динамическая камера: Автоматическая настройка камеры при разговоре с NPC\n\n" ..
                     "Доступные команды:\n" ..
                     "▪ /dialogui или /dialogui config - открыть окно настроек\n" ..
@@ -84,6 +94,12 @@ function DConfigFrame_OnShow()
         fontLabel:SetText("Размер шрифта:");
     end
 
+    local fontSelectLabel = getglobal("DConfigFontSelectLabel");
+    if fontSelectLabel then
+        SetFontColor(fontSelectLabel, "DarkBrown");
+        fontSelectLabel:SetText("Шрифт:");
+    end
+
     -- Обновляем значения в полях ввода
     local scaleEditBox = getglobal("DConfigScaleEditBox");
     if scaleEditBox then
@@ -100,24 +116,98 @@ function DConfigFrame_OnShow()
         fontEditBox:SetText(string.format("%.1f", DialogUI_Config.fontSize));
     end
 
+    -- Обновляем кнопки выбора шрифта
+    DConfigFrame_UpdateFontButtons();
+
     -- Применяем текущую прозрачность к фону окна настроек
     DialogUI_ApplyConfigAlpha();
 
-    -- ИСПРАВЛЕНО: Добавляем элементы управления камерой с небольшой задержкой
-    -- чтобы убедиться, что все фреймы созданы
+    -- Добавляем элементы управления камерой ПОСЛЕ кнопок шрифтов
     if DynamicCamera and DynamicCamera.AddConfigControls then
         -- Проверяем, были ли уже созданы контролы камеры
         if not getglobal("DCameraSectionTitle") then
+            -- Создаем контролы (они создадутся с привязкой по умолчанию)
             DynamicCamera:AddConfigControls();
-        else
-            -- Обновляем существующие контролы
-            DynamicCamera:UpdateConfigControls();
         end
+        
+        -- Перемещаем существующие контролы камеры, привязывая к ПЕРВОЙ кнопке шрифта
+        DialogUI_PositionCameraControls();
     end
 end
 
 function DConfigFrame_OnHide()
     PlaySound("igQuestListClose");
+end
+
+-- Функция для правильного позиционирования элементов камеры после кнопок шрифтов
+function DialogUI_PositionCameraControls()
+    if not DynamicCamera then return; end
+    
+    local cameraSection = getglobal("DCameraSectionTitle");
+    if not cameraSection then return; end
+    
+    -- Привязываем секцию камеры к ПЕРВОЙ кнопке шрифта (DConfigFontButton1)
+    cameraSection:ClearAllPoints();
+    cameraSection:SetPoint("TOP", "DConfigFontButton1", "BOTTOM", 0, -70);
+    -- Отступ -70 означает: 10px после второго ряда + 10px отступ + 50px дополнительно
+    
+    -- Перемещаем остальные элементы камеры (они обычно привязаны к заголовку)
+    local cameraEnableCheck = getglobal("DCameraEnableCheck");
+    if cameraEnableCheck then
+        cameraEnableCheck:ClearAllPoints();
+        cameraEnableCheck:SetPoint("TOP", cameraSection, "BOTTOM", 0, -10);
+    end
+    
+    local cameraPresetLabel = getglobal("DCameraPresetLabel");
+    if cameraPresetLabel then
+        cameraPresetLabel:ClearAllPoints();
+        cameraPresetLabel:SetPoint("TOP", cameraEnableCheck, "BOTTOM", 0, -15);
+    end
+    
+    -- Привязываем пресеты к первой кнопке шрифта для правильного выравнивания
+    local cinematicButton = getglobal("DCameraCinematicButton");
+    if cinematicButton then
+        cinematicButton:ClearAllPoints();
+        cinematicButton:SetPoint("TOPLEFT", "DConfigFontButton1", "BOTTOMLEFT", 0, -140);
+    end
+    
+    local closeButton = getglobal("DCameraCloseButton");
+    if closeButton then
+        closeButton:ClearAllPoints();
+        closeButton:SetPoint("LEFT", cinematicButton, "RIGHT", 10, 0);
+    end
+    
+    local normalButton = getglobal("DCameraNormalButton");
+    if normalButton then
+        normalButton:ClearAllPoints();
+        normalButton:SetPoint("LEFT", closeButton, "RIGHT", 10, 0);
+    end
+    
+    local wideButton = getglobal("DCameraWideButton");
+    if wideButton then
+        wideButton:ClearAllPoints();
+        wideButton:SetPoint("LEFT", normalButton, "RIGHT", 10, 0);
+    end
+    
+    -- Обновляем если есть функция обновления
+    if DynamicCamera.UpdateConfigControls then
+        DynamicCamera.UpdateConfigControls();
+    end
+    
+    -- Корректируем высоту скролл-контейнера, чтобы вместить все элементы
+    local scrollChild = getglobal("DConfigScrollChild");
+    if scrollChild then
+        -- Получаем нижнюю границу последнего элемента камеры
+        local lastCameraControl = getglobal("DCameraWideButton") or getglobal("DCameraEnableCheck");
+        if lastCameraControl then
+            local bottom = lastCameraControl:GetBottom();
+            local childTop = scrollChild:GetTop();
+            if bottom and childTop then
+                local requiredHeight = childTop - bottom + 50; -- +50 для отступа
+                scrollChild:SetHeight(math.max(requiredHeight, 900));
+            end
+        end
+    end
 end
 
 -- Функции полей ввода
@@ -203,6 +293,7 @@ function DConfigResetButton_OnClick()
     DialogUI_Config.scale = 1.0;
     DialogUI_Config.alpha = 1.0;
     DialogUI_Config.fontSize = 1.0;
+    DialogUI_Config.fontFile = "frizqt___cyr.ttf";
 
     -- Обновляем поля ввода
     local scaleEditBox = getglobal("DConfigScaleEditBox");
@@ -219,6 +310,9 @@ function DConfigResetButton_OnClick()
     if fontEditBox then
         fontEditBox:SetText("1.0");
     end
+
+    -- Обновляем кнопки шрифтов
+    DConfigFrame_UpdateFontButtons();
 
     -- Применяем изменения
     DialogUI_ApplyAllSettings();
@@ -359,6 +453,7 @@ function DialogUI_ApplyAllSettings()
     DialogUI_ApplyScale();
     DialogUI_ApplyAlpha();
     DialogUI_ApplyFontSize();
+    DialogUI_ApplyFont();
 end
 
 -- Сохранение/Загрузка конфигурации
@@ -370,6 +465,7 @@ function DialogUI_SaveConfig()
     DialogUI_SavedConfig.scale = DialogUI_Config.scale;
     DialogUI_SavedConfig.alpha = DialogUI_Config.alpha;
     DialogUI_SavedConfig.fontSize = DialogUI_Config.fontSize;
+    DialogUI_SavedConfig.fontFile = DialogUI_Config.fontFile;
 end
 
 function DialogUI_LoadConfig()
@@ -377,6 +473,7 @@ function DialogUI_LoadConfig()
         DialogUI_Config.scale = DialogUI_SavedConfig.scale or 1.0;
         DialogUI_Config.alpha = DialogUI_SavedConfig.alpha or 1.0;
         DialogUI_Config.fontSize = DialogUI_SavedConfig.fontSize or 1.0;
+        DialogUI_Config.fontFile = DialogUI_SavedConfig.fontFile or "frizqt___cyr.ttf";
 
         DialogUI_ApplyAllSettings();
     end
@@ -416,4 +513,108 @@ function DialogUI_ApplyConfigAlpha()
             end
         end
     end
+end
+
+-- ==========================================
+-- Функции выбора шрифта
+-- ==========================================
+
+function DConfigFrame_UpdateFontButtons()
+    local currentFont = DialogUI_Config.fontFile or "frizqt___cyr.ttf";
+    
+    for i, fontData in ipairs(AVAILABLE_FONTS) do
+        local button = getglobal("DConfigFontButton" .. i);
+        local check = getglobal("DConfigFontButton" .. i .. "Check");
+        
+        if button and check then
+            if fontData.file == currentFont then
+                -- Выбранный шрифт
+                check:Show();
+                button:SetNormalTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\parchment\\ButtonHighlight-Gossip");
+            else
+                -- Невыбранный шрифт
+                check:Hide();
+                button:SetNormalTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\parchment\\OptionBackground-common");
+            end
+            
+            -- Устанавливаем текст кнопки
+            local text = getglobal(button:GetName() .. "Text");
+            if text then
+                text:SetText(fontData.name);
+            end
+        end
+    end
+end
+
+function DConfigFontButton_OnClick(index)
+    if not index or index < 1 or index > #AVAILABLE_FONTS then return; end
+    
+    local fontData = AVAILABLE_FONTS[index];
+    if not fontData then return; end
+    
+    DialogUI_Config.fontFile = fontData.file;
+    
+    -- Обновляем визуальное состояние кнопок
+    DConfigFrame_UpdateFontButtons();
+    
+    -- Применяем шрифт
+    DialogUI_ApplyFont();
+    
+    -- Сохраняем
+    DialogUI_SaveConfig();
+    
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Шрифт изменен на " .. fontData.name);
+    end
+    
+    PlaySound("igMainMenuOptionCheckBoxOn");
+end
+
+function DialogUI_ApplyFont()
+    local fontFile = DialogUI_Config.fontFile or "frizqt___cyr.ttf";
+    local fontPath = "Interface\\AddOns\\DialogUI\\src\\assets\\font\\" .. fontFile;
+    
+    -- Применяем шрифт ко всем текстовым элементам в DQuestFrame
+    if DQuestFrame then
+        DialogUI_SetFontForFrame(DQuestFrame, fontPath);
+    end
+    
+    -- Применяем шрифт ко всем текстовым элементам в DGossipFrame
+    if DGossipFrame then
+        DialogUI_SetFontForFrame(DGossipFrame, fontPath);
+    end
+    
+    -- Применяем шрифт к окну конфигурации
+    if DConfigFrame then
+        DialogUI_SetFontForFrame(DConfigFrame, fontPath);
+    end
+end
+
+function DialogUI_SetFontForFrame(frame, fontPath)
+    if not frame then return; end
+    
+    local regions = {frame:GetRegions()};
+    for i = 1, #regions do
+        local region = regions[i];
+        if region and region:GetObjectType() == "FontString" then
+            local _, fontSize, fontFlags = region:GetFont();
+            if fontSize then
+                region:SetFont(fontPath, fontSize, fontFlags);
+            end
+        end
+    end
+    
+    -- Рекурсивно обрабатываем дочерние фреймы
+    local children = {frame:GetChildren()};
+    for i = 1, table.getn(children) do
+        local child = children[i];
+        if child then
+            DialogUI_SetFontForFrame(child, fontPath);
+        end
+    end
+end
+
+function DialogUI_GetFontPath()
+    local fontFile = DialogUI_Config.fontFile or "frizqt___cyr.ttf";
+    return "Interface\\AddOns\\DialogUI\\src\\assets\\font\\" .. fontFile;
 end

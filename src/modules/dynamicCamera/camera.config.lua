@@ -1,9 +1,8 @@
 -- Динамическая интеграция конфигурации камеры
 -- Расширяет окно конфигурации DialogUI элементами управления камерой
 -- Совместимо с WoW 3.3.5
--- ИСПРАВЛЕНО: Добавлены настройки Face View (лицом к NPC)
--- ИСПРАВЛЕНО: Удалены дублирующиеся чекбоксы
--- ИСПРАВЛЕНО: Добавлена возможность отключения дебаг-сообщений
+-- ИСПРАВЛЕНО: Добавлен параметр offsetY для позиционирования
+-- ИСПРАВЛЕНО: Исправлена ошибка с индексацией self
 
 -- Глобальная переменная для управления дебаг-сообщениями
 -- Установите в false, чтобы отключить все дебаг-сообщения
@@ -20,8 +19,12 @@ end
 DialogUI_DebugMessage("DialogUI: camera.config.lua загружается...");
 
 -- Добавить элементы управления камерой в окно конфигурации
-function DynamicCamera:AddConfigControls()
+-- ИСПРАВЛЕНО: Добавлен параметр offsetY для позиционирования
+function DynamicCamera:AddConfigControls(offsetY)
     DialogUI_DebugMessage("DialogUI: Попытка добавить элементы управления камерой...");
+
+    -- ИСПРАВЛЕНО: Используем self для доступа к методам объекта
+    local self = DynamicCamera; -- Гарантируем, что self определен
 
     -- ИСПРАВЛЕНО: Используем getglobal для безопасного получения фреймов
     local parent = getglobal("DConfigScrollChild") or getglobal("DConfigFrame");
@@ -32,14 +35,14 @@ function DynamicCamera:AddConfigControls()
 
     DialogUI_DebugMessage("DialogUI: Родительский элемент найден: " .. (parent:GetName() or "неизвестно"));
 
-    -- Проверяем существование DConfigFontLabel
-    local fontLabel = getglobal("DConfigFontLabel");
-    if not fontLabel then
-        DialogUI_DebugMessage("DialogUI: ОШИБКА - DConfigFontLabel не существует");
+    -- Проверяем существование DConfigFontSelectLabel
+    local fontSelectLabel = getglobal("DConfigFontSelectLabel");
+    if not fontSelectLabel then
+        DialogUI_DebugMessage("DialogUI: ОШИБКА - DConfigFontSelectLabel не существует");
         return;
     end
 
-    DialogUI_DebugMessage("DialogUI: DConfigFontLabel найден, создаем раздел камеры...");
+    DialogUI_DebugMessage("DialogUI: DConfigFontSelectLabel найден, создаем раздел камеры...");
 
     -- Проверяем, существует ли уже раздел камеры (избегаем дубликатов)
     if getglobal("DCameraSectionTitle") then
@@ -47,9 +50,12 @@ function DynamicCamera:AddConfigControls()
         return;
     end
 
+    -- ИСПРАВЛЕНО: Используем offsetY для позиционирования, если он передан
+    local yOffset = offsetY or 40; -- По умолчанию 40, если параметр не передан
+
     -- Создаем заголовок раздела камеры
     local cameraTitle = parent:CreateFontString("DCameraSectionTitle", "OVERLAY", "DQuestButtonTitleGossip");
-    cameraTitle:SetPoint("TOPLEFT", fontLabel, "BOTTOMLEFT", 0, -35);
+    cameraTitle:SetPoint("TOPLEFT", fontSelectLabel, "BOTTOMLEFT", 0, -yOffset);
     cameraTitle:SetText("Настройки Камеры");
     cameraTitle:SetJustifyH("LEFT");
     if SetFontColor then
@@ -205,6 +211,8 @@ end
 
 -- Обновить существующие элементы управления конфигурации текущими значениями
 function DynamicCamera:UpdateConfigControls()
+    local self = DynamicCamera; -- Гарантируем, что self определен
+    
     local checkbox = getglobal("DCameraEnabledCheckbox");
     if checkbox then
         checkbox:SetChecked(self.config.enabled);
@@ -239,6 +247,8 @@ end
 
 -- Тестовые пресеты камеры
 function DynamicCamera:ApplyPreset(presetName)
+    local self = DynamicCamera; -- Гарантируем, что self определен
+    
     if presetName == "cinematic" then
         self.config.faceViewDistance = 2.0;
         self.config.useFaceView = true;
