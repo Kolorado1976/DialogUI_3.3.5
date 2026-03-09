@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 
 local function DebugMsg(...)
     if DEBUG_MODE then
@@ -1146,50 +1146,97 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
     if not questsTable or table.getn(questsTable) == 0 then return end
 
     local dataSize = table.getn(questsTable)
-    
-    local fieldsPerQuest
-    if dataSize % 4 == 0 then
-        fieldsPerQuest = 4
-    elseif dataSize % 3 == 0 then
-        fieldsPerQuest = 3
-    elseif dataSize % 2 == 0 then
-        fieldsPerQuest = 2
-    else
-        fieldsPerQuest = 1
-    end
-    
-    local numQuests = math.floor(dataSize / fieldsPerQuest)
-    
-    DebugMsg(string.format("DEBUG: ActiveQuests - dataSize=%d, fieldsPerQuest=%d, numQuests=%d", 
-        dataSize, fieldsPerQuest, numQuests))
+
+    DebugMsg(string.format("DEBUG: ActiveQuests - dataSize=%d", dataSize))
 
     local quests = {}
-    for i = 1, numQuests do
-        local baseIndex = (i - 1) * fieldsPerQuest + 1
-        local questTitle = questsTable[baseIndex]
-        local questLevel = questsTable[baseIndex + 1]
-        
-        local isComplete = false
-        if fieldsPerQuest >= 3 then
-            if questsTable[baseIndex + 2] ~= nil then
-                isComplete = (questsTable[baseIndex + 2] == 1)
-            elseif questsTable[baseIndex + 3] ~= nil then
-                isComplete = (questsTable[baseIndex + 3] == 1)
+    local i = 1
+
+    -- ИСПРАВЛЕНО: Последовательный парсинг с правильным определением isComplete
+    while i <= dataSize do
+        local field = questsTable[i]
+
+        -- Ищем строку (title квеста)
+        if type(field) == "string" then
+            local questTitle = field
+            local questLevel = nil
+            local isComplete = false
+            local isLowLevel = nil
+
+            local nextIndex = i + 1
+
+            -- ИСПРАВЛЕНО: Пропускаем nil поля
+            while nextIndex <= dataSize and questsTable[nextIndex] == nil do
+                nextIndex = nextIndex + 1
             end
-        end
-        
-        if questTitle and questTitle ~= "" and questTitle ~= tostring(i) then
+
+            -- Ищем level (число > 1)
+            if nextIndex <= dataSize and type(questsTable[nextIndex]) == "number" then
+                local val = questsTable[nextIndex]
+                if val > 1 or val < 0 then
+                    questLevel = val
+                    nextIndex = nextIndex + 1
+                end
+            end
+
+            -- ИСПРАВЛЕНО: Пропускаем nil снова
+            while nextIndex <= dataSize and questsTable[nextIndex] == nil do
+                nextIndex = nextIndex + 1
+            end
+
+            -- Ищем флаги isLowLevel и isComplete (0 или 1)
+            local flagsFound = 0
+            while nextIndex <= dataSize and flagsFound < 2 do
+                local val = questsTable[nextIndex]
+                if type(val) == "number" and (val == 0 or val == 1) then
+                    if flagsFound == 0 then
+                        -- Первый флаг
+                        if nextIndex + 1 <= dataSize then
+                            local nextVal = questsTable[nextIndex + 1]
+                            if type(nextVal) == "number" and (nextVal == 0 or nextVal == 1) then
+                                -- Два флага: isLowLevel, isComplete
+                                isLowLevel = (val == 1)
+                                isComplete = (nextVal == 1)
+                                nextIndex = nextIndex + 2
+                                flagsFound = 2
+                            else
+                                -- Один флаг: isComplete
+                                isComplete = (val == 1)
+                                nextIndex = nextIndex + 1
+                                flagsFound = 1
+                            end
+                        else
+                            -- Последний флаг: isComplete
+                            isComplete = (val == 1)
+                            nextIndex = nextIndex + 1
+                            flagsFound = 1
+                        end
+                    end
+                else
+                    break
+                end
+                -- ИСПРАВЛЕНО: Выходим после обработки флагов
+                break
+            end
+
             table.insert(quests, {
                 title = questTitle,
                 level = questLevel,
-                isComplete = isComplete
+                isComplete = isComplete,
+                isLowLevel = isLowLevel
             })
-            DebugMsg(string.format("DEBUG: Quest %d - title='%s', level=%s, isComplete=%s", 
-                i, tostring(questTitle), tostring(questLevel), tostring(isComplete)))
+
+            DebugMsg(string.format("DEBUG: Parsed quest - title='%s', level=%s, isComplete=%s", 
+                tostring(questTitle), tostring(questLevel), tostring(isComplete)))
+
+            i = nextIndex
+        else
+            DebugMsg(string.format("DEBUG: Skipping field %d = %s", i, tostring(field)))
+            i = i + 1
         end
     end
 
-    numQuests = #quests
+    local numQuests = #quests
     DebugMsg(string.format("DEBUG: ActiveQuests - parsed %d valid quests", numQuests))
 
     if numQuests == 0 then return end
@@ -1198,19 +1245,18 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
 
     for i = 1, numQuests do
         if DGossipFrame.buttonIndex > NUMGOSSIPBUTTONS then break end
-        
+
         local titleButton = getglobal("DGossipTitleButton" .. DGossipFrame.buttonIndex);
         if not titleButton then break end
-        
+
         local quest = quests[i]
         local questTitle = quest.title
         local isComplete = quest.isComplete
 
         local displayText = DGossipFrame.buttonIndex .. ". " .. questTitle
-        
-        -- ИСПОЛЬЗУЕМ ФУНКЦИЮ С ПЕРЕНОСОМ
+
         DGossipTitleButton_SetGossipText(titleButton, displayText)
-        
+
         titleButton:SetID(titleIndex);
         titleButton.type = "active"
         titleButton.questIndex = titleIndex
@@ -1232,26 +1278,42 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
                 end
             end
         end
-        
+
         if gossipIcon then
             gossipIcon:ClearAllPoints()
             gossipIcon:SetWidth(24)
             gossipIcon:SetHeight(24)
             gossipIcon:SetPoint("LEFT", titleButton, "LEFT", 5, 0)
-            
+
+            -- ИСПРАВЛЕНО: Используем правильные пути с двойными обратными слешами
+            local iconPath
             if isComplete then
-                gossipIcon:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\activeQuestIcon")
-                DebugMsg(string.format("DEBUG: Quest '%s' - using complete icon", questTitle))
+                iconPath = "Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\activeQuestIcon"
             else
-                gossipIcon:SetTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\incompleteQuestIcon")
-                DebugMsg(string.format("DEBUG: Quest '%s' - using incomplete icon", questTitle))
+                iconPath = "Interface\\AddOns\\DialogUI\\src\\assets\\art\\icons\\incompleteQuestIcon"
             end
+
+            gossipIcon:SetTexture(iconPath)
+
+            -- Проверяем загрузилась ли текстура
+            if not gossipIcon:GetTexture() then
+                DebugMsg(string.format("DEBUG: WARNING - Icon not loaded, trying forward slashes"))
+                -- Пробуем с прямыми слешами
+                iconPath = string.gsub(iconPath, "\\\\", "/")
+                gossipIcon:SetTexture(iconPath)
+                DebugMsg(string.format("DEBUG: Forward slash path result: %s", tostring(gossipIcon:GetTexture() ~= nil)))
+            end
+
             gossipIcon:Show()
+            DebugMsg(string.format("DEBUG: Set icon for '%s' - isComplete=%s, texture=%s", 
+                questTitle, tostring(isComplete), tostring(gossipIcon:GetTexture())))
+        else
+            DebugMsg(string.format("DEBUG: ERROR - No gossipIcon found for button %d", DGossipFrame.buttonIndex))
         end
 
         -- Настройка кнопки
         titleButton:SetNormalTexture("Interface\\AddOns\\DialogUI\\src\\assets\\art\\parchment\\OptionBackground-common")
-        
+
         local btnText = titleButton:GetFontString()
         if btnText then
             btnText:ClearAllPoints()
@@ -1259,7 +1321,7 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
         end
 
         titleButton:Show()
-        
+
         -- Динамическое позиционирование
         if DGossipFrame.buttonIndex > 1 then
             local prevButton = getglobal("DGossipTitleButton" .. (DGossipFrame.buttonIndex - 1))
@@ -1267,7 +1329,7 @@ function DGossipFrameActiveQuestsUpdate(questsTable)
                 titleButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -5)
             end
         end
-        
+
         DGossipFrame.buttonIndex = DGossipFrame.buttonIndex + 1;
         titleIndex = titleIndex + 1
     end
