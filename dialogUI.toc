@@ -6,6 +6,7 @@
 ## LoadOnDemand: 0
 ## Notes: Addon made for an immersive questing experience in WotLK 3.3.5 client, consider it a WotLK+ frame.
 ## SavedVariables: DialogUIFramePosition, DialogUI_SavedConfig
+## SavedVariables: DialogUI_QuestNotes
 ## X-Sirus-Update https://github.com/fxpw/RaidBrowser/tree/master
 ## X-Sirus-Category 13
 ## X-Adapted-By: Velord
@@ -28,6 +29,7 @@ src\frames\tooltip.custom.lua
 
 # Quest frame (loaded first to provide basic functions)
 src\frames\questFrame\quest.frame.lua
+src\frames\questFrame\quest.notes.lua
 src\frames\questFrame\quest.frame.template.xml
 src\frames\questFrame\quest.frame.xml
 

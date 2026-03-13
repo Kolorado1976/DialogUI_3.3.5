@@ -1,5 +1,7 @@
 ---@diagnostic disable: undefined-global
 
+local DQuestNotes = DQuestNotes or {}
+
 local DEBUG_MODE = false
 
 local function DebugMsg(...)

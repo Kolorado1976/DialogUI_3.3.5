@@ -1,6 +1,6 @@
 ---@diagnostic disable: undefined-global
 
-local DEBUG_MODE = true
+local DEBUG_MODE = false
 
 local function DebugMsg(...)
     if DEBUG_MODE then
