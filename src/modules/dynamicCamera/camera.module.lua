@@ -163,7 +163,7 @@ function DynamicCamera:RestoreOriginalPosition()
         return;
     end
 
-    -- Восстанавливаем вид от третьего лица ПЕРВЫМ ДЕЛОМ
+    -- 1. Сначала восстанавливаем вид (это важно сделать первым)
     if SetView then
         if self.originalView and self.originalView ~= 1 then
             SetView(self.originalView);
@@ -172,38 +172,36 @@ function DynamicCamera:RestoreOriginalPosition()
         end
     end
 
-    -- Восстанавливаем дистанцию
-    if self.config.usePresetRestore and self.config.savedCameraDistance then
-        if SetCVar then
-            SetCVar("cameraDistanceMax", tostring(self.config.savedCameraDistance));
-        end
+    -- 2. Получаем текущую дистанцию
+    local currentDist = tonumber(GetCVar("cameraDistanceMax")) or 15;
+    local targetDist = self.originalDistance or 15;
+    
+    -- 3. Устанавливаем CVar на целевое значение
+    if SetCVar then
+        SetCVar("cameraDistanceMax", tostring(targetDist));
+        SetCVar("cameraDistanceMaxFactor", "1.0");
+    end
 
-        if CameraZoomOut and self.config.savedCameraDistance then
-            local targetDistance = self.config.savedCameraDistance;
-            if targetDistance > 10 then
-                for i = 1, 5 do
-                    CameraZoomOut(2.0);
-                end
-            end
+    -- 4. Плавно приближаем/отдаляем до нужной дистанции
+    if currentDist < targetDist then
+        -- Нужно отдалить (камера слишком близко)
+        local diff = targetDist - currentDist;
+        local steps = math.min(math.ceil(diff * 2), 10); -- Не больше 10 шагов
+        
+        for i = 1, steps do
+            CameraZoomOut(1.0);
         end
-    else
-        -- Восстанавливаем оригинальную дистанцию
-        if SetCVar then
-            SetCVar("cameraDistanceMax", tostring(self.originalDistance));
-        end
-
-        -- Отдаляем камеру обратно
-        if CameraZoomOut and self.originalDistance then
-            local currentDist = tonumber(GetCVar("cameraDistanceMax")) or 2;
-            if self.originalDistance > currentDist then
-                for i = 1, math.ceil(self.originalDistance - currentDist) do
-                    CameraZoomOut(1.0);
-                end
-            end
+    elseif currentDist > targetDist then
+        -- Нужно приблизить (камера слишком далеко)
+        local diff = currentDist - targetDist;
+        local steps = math.min(math.ceil(diff * 2), 10); -- Не больше 10 шагов
+        
+        for i = 1, steps do
+            CameraZoomIn(1.0);
         end
     end
 
-    -- Очистка
+    -- 5. Очистка
     self.isActive = false;
     self.originalDistance = nil;
     self.originalPitch = nil;
@@ -211,9 +209,38 @@ function DynamicCamera:RestoreOriginalPosition()
     self.originalView = nil;
 
     if DEFAULT_CHAT_FRAME then
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Позиция камеры восстановлена");
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Позиция камеры восстановлена (дистанция: " .. targetDist .. ")");
     end
 end
+
+-- Принудительное восстановление камеры (для экстренных случаев)
+function DynamicCamera:ForceRestore()
+    if SetCVar then
+        SetCVar("cameraDistanceMax", "15");
+    end
+    
+    if CameraZoomOut then
+        for i = 1, 15 do
+            CameraZoomOut(2.0);
+        end
+    end
+    
+    if SetView then
+        SetView(2);
+    end
+    
+    self.isActive = false;
+    
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Камера принудительно восстановлена");
+    end
+end
+
+-- Добавьте слэш-команду для принудительного восстановления
+SlashCmdList["FORCE_RESTORE_CAMERA"] = function()
+    DynamicCamera:ForceRestore();
+end;
+SLASH_FORCE_RESTORE_CAMERA1 = "/restorecamera";
 
 -- Применить настройки камеры немедленно (запасной метод)
 function DynamicCamera:ApplyImmediateCamera(distance, pitch, yaw)
