@@ -1,7 +1,7 @@
 -- Модуль динамической камеры для DialogUI
 -- Обеспечивает плавные переходы камеры при взаимодействии с NPC
 -- Совместимо с WoW 3.3.5
--- ИСПРАВЛЕНО: Теперь камера фокусируется на лицо NPC, а не в ноги
+-- ИСПРАВЛЕНО: Сохраняем и восстанавливаем CVar правильно, не сбивая ползунок
 
 -- Инициализация модуля камеры
 DynamicCamera = {};
@@ -9,16 +9,17 @@ DynamicCamera.isActive = false;
 DynamicCamera.originalDistance = nil;
 DynamicCamera.originalPitch = nil;
 DynamicCamera.originalYaw = nil;
-DynamicCamera.originalView = nil;  -- Сохраняем вид (1-5)
+DynamicCamera.originalView = nil;
 DynamicCamera.transitionActive = false;
 DynamicCamera.initialized = false;
+DynamicCamera.savedMaxDistance = nil; -- Для сохранения оригинального CVar
 
 -- Настройки камеры по умолчанию
 DynamicCamera.config = {
     enabled = true,
-    interactionDistance = 3,      -- УМЕНЬШЕНО: Ближе к NPC для face view
-    interactionPitch = -0.1,        -- ИЗМЕНЕНО: Почти горизонтально (лицо, а не ноги)
-    transitionSpeed = 2.0,        -- Скорость перехода камеры
+    interactionDistance = 3,
+    interactionPitch = -0.1,
+    transitionSpeed = 2.0,
     enableForGossip = true,
     enableForVendors = true,
     enableForTrainers = true,
@@ -28,43 +29,29 @@ DynamicCamera.config = {
     savedCameraYaw = nil,
     savedCameraPitch = nil,
     savedCameraDistance = nil,
-    -- НОВЫЕ НАСТРОЙКИ для Face View
-    useFaceView = true,            -- Включить режим "лицом к NPC"
-    faceViewDistance = 2.5,      -- Дистанция для вида на лицо (очень близко)
-    useFirstPersonView = true,     -- Использовать вид от первого лица
+    useFaceView = true,
+    faceViewDistance = 2.5,
+    useFirstPersonView = true,
 };
 
 -- Сохранить исходную позицию камеры и вид
 function DynamicCamera:SaveOriginalPosition()
     if not self.isActive then
-        local distance = 15;
-        local pitch = 0;
-        local yaw = 0;
-        local view = 2;  -- По умолчанию вид от 3-го лица
-
+        -- Сохраняем текущие CVar значения
         if GetCVar then
-            local camDist = GetCVar("cameraDistanceMax");
-            if camDist then
-                distance = tonumber(camDist) or 15;
-            end
-            -- Сохраняем текущий вид (1-5)
-            local currentView = GetCVar("cameraView");
-            if currentView then
-                view = tonumber(currentView) or 2;
-            end
+            self.originalDistance = tonumber(GetCVar("cameraDistanceMax")) or 15;
+            self.originalView = tonumber(GetCVar("cameraView")) or 2;
+            
+            -- Сохраняем также cameraDistanceMaxFactor если нужно
+            self.originalDistanceFactor = tonumber(GetCVar("cameraDistanceMaxFactor")) or 1.0;
         end
 
         if self.config.savedCameraPitch then
-            pitch = self.config.savedCameraPitch;
+            self.originalPitch = self.config.savedCameraPitch;
         end
         if self.config.savedCameraYaw then
-            yaw = self.config.savedCameraYaw;
+            self.originalYaw = self.config.savedCameraYaw;
         end
-
-        self.originalDistance = distance;
-        self.originalPitch = pitch;
-        self.originalYaw = yaw;
-        self.originalView = view;
 
         -- Сохраняем в SavedVariables
         if not DialogUI_SavedConfig then
@@ -77,7 +64,7 @@ function DynamicCamera:SaveOriginalPosition()
     end
 end
 
--- Применить позицию камеры для взаимодействия - ВЕРСИЯ FACE VIEW
+-- Применить позицию камеры для взаимодействия
 function DynamicCamera:ApplyInteractionPosition()
     if not self.config.enabled then
         return;
@@ -89,11 +76,9 @@ function DynamicCamera:ApplyInteractionPosition()
 
     self:SaveOriginalPosition();
 
-    -- НОВЫЙ ПОДХОД: Face View
     if self.config.useFaceView then
         self:ApplyFaceView();
     else
-        -- Старый подход - просто приближение
         self:ApplyImmediateCamera(self.config.interactionDistance, self.config.interactionPitch, self.originalYaw);
     end
 
@@ -104,129 +89,113 @@ function DynamicCamera:ApplyInteractionPosition()
     end
 end
 
--- НОВАЯ ФУНКЦИЯ: Применить вид "лицом к NPC"
+-- Применить вид "лицом к NPC" (исправленная версия)
 function DynamicCamera:ApplyFaceView()
     if not self.config.useFaceView then
         return;
     end
 
-    -- Способ 1: Вид от первого лица + зум
-    if self.config.useFirstPersonView and SetView then
-        -- Сохраняем текущий вид перед переключением
-        if SaveView then
-            SaveView(5);  -- Сохраняем в слот 5 (обычно свободен)
-        end
-
+    -- Сохраняем текущее максимальное расстояние
+    self.savedMaxDistance = tonumber(GetCVar("cameraDistanceMax")) or 15;
+    
+    if self.config.useFirstPersonPersonView and SetView then
         -- Переключаемся на вид от первого лица
         SetView(1);
-
-        -- Небольшая задержка для применения вида, затем зум
-        local zoomFrame = CreateFrame("Frame");
-        local elapsed = 0;
-        zoomFrame:SetScript("OnUpdate", function(self, delta)
-            elapsed = elapsed + delta;
-            if elapsed >= 0.05 then  -- Короткая задержка
-                -- Применяем дистанцию через CVar для вида от 1-го лица
-                if SetCVar then
-                    SetCVar("cameraDistanceMax", tostring(DynamicCamera.config.faceViewDistance));
-                end
-                -- Или используем зум
-                if CameraZoomIn then
-                    for i = 1, 10 do
-                        CameraZoomIn(1.0);
-                    end
-                end
-                zoomFrame:SetScript("OnUpdate", nil);
-                zoomFrame = nil;
+        
+        -- Устанавливаем CVar для дистанции
+        if SetCVar then
+            SetCVar("cameraDistanceMax", tostring(self.config.faceViewDistance));
+            SetCVar("cameraDistanceMaxFactor", "1.0");
+        end
+        
+        -- Приближаем камеру (ограниченное количество шагов)
+        if CameraZoomIn then
+            for i = 1, 5 do
+                CameraZoomIn(1.0);
             end
-        end);
-
+        end
     else
-        -- Способ 2: Обычный зум с коррекцией угла
-        -- Устанавливаем минимальную дистанцию
+        -- Альтернативный метод - только зум
         if SetCVar then
             SetCVar("cameraDistanceMax", tostring(self.config.faceViewDistance));
         end
-
-        -- Приближаем камеру через зум
+        
         if CameraZoomIn then
-            for i = 1, 15 do
+            for i = 1, 10 do
                 CameraZoomIn(1.0);
             end
         end
     end
 end
 
--- Восстановить исходную позицию камеры
+-- Восстановить исходную позицию камеры (исправленная версия)
 function DynamicCamera:RestoreOriginalPosition()
     if not self.originalDistance then
         return;
     end
 
-    -- 1. Сначала восстанавливаем вид (это важно сделать первым)
+    -- 1. Сначала восстанавливаем вид
     if SetView then
         if self.originalView and self.originalView ~= 1 then
             SetView(self.originalView);
         else
-            SetView(2);  -- По умолчанию вид от 3-го лица
+            SetView(2);
         end
     end
 
-    -- 2. Получаем текущую дистанцию
+    -- 2. Восстанавливаем CVar на оригинальное значение
+    if SetCVar and self.originalDistance then
+        SetCVar("cameraDistanceMax", tostring(self.originalDistance));
+        if self.originalDistanceFactor then
+            SetCVar("cameraDistanceMaxFactor", tostring(self.originalDistanceFactor));
+        end
+    end
+
+    -- 3. Плавная корректировка через зум (только если нужно)
     local currentDist = tonumber(GetCVar("cameraDistanceMax")) or 15;
     local targetDist = self.originalDistance or 15;
     
-    -- 3. Устанавливаем CVar на целевое значение
-    if SetCVar then
-        SetCVar("cameraDistanceMax", tostring(targetDist));
-        SetCVar("cameraDistanceMaxFactor", "1.0");
-    end
-
-    -- 4. Плавно приближаем/отдаляем до нужной дистанции
-    if currentDist < targetDist then
-        -- Нужно отдалить (камера слишком близко)
-        local diff = targetDist - currentDist;
-        local steps = math.min(math.ceil(diff * 2), 10); -- Не больше 10 шагов
-        
-        for i = 1, steps do
-            CameraZoomOut(1.0);
-        end
-    elseif currentDist > targetDist then
-        -- Нужно приблизить (камера слишком далеко)
-        local diff = currentDist - targetDist;
-        local steps = math.min(math.ceil(diff * 2), 10); -- Не больше 10 шагов
-        
-        for i = 1, steps do
-            CameraZoomIn(1.0);
+    -- Минимальная корректировка, чтобы не сбивать ползунок
+    if math.abs(currentDist - targetDist) > 0.5 then
+        if currentDist < targetDist then
+            -- Нужно отдалить
+            local steps = math.min(math.ceil((targetDist - currentDist) / 2), 8);
+            for i = 1, steps do
+                CameraZoomOut(1.0);
+            end
+        elseif currentDist > targetDist then
+            -- Нужно приблизить
+            local steps = math.min(math.ceil((currentDist - targetDist) / 2), 8);
+            for i = 1, steps do
+                CameraZoomIn(1.0);
+            end
         end
     end
 
-    -- 5. Очистка
+    -- 4. Очистка
     self.isActive = false;
     self.originalDistance = nil;
     self.originalPitch = nil;
     self.originalYaw = nil;
     self.originalView = nil;
+    self.savedMaxDistance = nil;
 
     if DEFAULT_CHAT_FRAME then
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Позиция камеры восстановлена (дистанция: " .. targetDist .. ")");
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Позиция камеры восстановлена");
     end
 end
 
--- Принудительное восстановление камеры (для экстренных случаев)
+-- Принудительное восстановление камеры (исправлено)
 function DynamicCamera:ForceRestore()
-    if SetCVar then
-        SetCVar("cameraDistanceMax", "15");
-    end
-    
-    if CameraZoomOut then
-        for i = 1, 15 do
-            CameraZoomOut(2.0);
-        end
-    end
-    
     if SetView then
         SetView(2);
+    end
+    
+    if SetCVar and self.originalDistance then
+        SetCVar("cameraDistanceMax", tostring(self.originalDistance));
+    elseif SetCVar then
+        -- Значение по умолчанию, если нет сохраненного
+        SetCVar("cameraDistanceMax", "15");
     end
     
     self.isActive = false;
@@ -236,36 +205,25 @@ function DynamicCamera:ForceRestore()
     end
 end
 
--- Добавьте слэш-команду для принудительного восстановления
-SlashCmdList["FORCE_RESTORE_CAMERA"] = function()
-    DynamicCamera:ForceRestore();
-end;
-SLASH_FORCE_RESTORE_CAMERA1 = "/restorecamera";
-
--- Применить настройки камеры немедленно (запасной метод)
+-- Применить настройки камеры немедленно (исправлено)
 function DynamicCamera:ApplyImmediateCamera(distance, pitch, yaw)
-    if CameraZoomIn and CameraZoomOut then
+    if SetCVar and distance then
+        SetCVar("cameraDistanceMax", tostring(distance));
+        SetCVar("cameraDistanceMaxFactor", "1.0");
+    end
+    
+    -- Минимальный зум для коррекции
+    if CameraZoomIn and distance then
         local currentDist = tonumber(GetCVar("cameraDistanceMax")) or 15;
-        local targetDist = distance or 8;
-
-        if currentDist > targetDist then
-            for i = 1, math.ceil(currentDist - targetDist) do
-                CameraZoomIn(1);
+        if currentDist > distance then
+            for i = 1, 3 do
+                CameraZoomIn(1.0);
             end
-        elseif currentDist < targetDist then
-            for i = 1, math.ceil(targetDist - currentDist) do
-                CameraZoomOut(1);
-            end
-        end
-    elseif SetCVar then
-        if distance then
-            SetCVar("cameraDistanceMax", tostring(distance));
-            SetCVar("cameraDistanceMaxFactor", "1.0");
         end
     end
 end
 
--- Обработчики событий
+-- Обработчики событий (без изменений)
 function DynamicCamera:OnGossipShow()
     if self.config.enableForGossip then
         self:ApplyInteractionPosition();
@@ -333,7 +291,6 @@ function DynamicCamera:LoadConfig()
         self.config.savedCameraYaw = saved.savedCameraYaw;
         self.config.savedCameraPitch = saved.savedCameraPitch;
         self.config.savedCameraDistance = saved.savedCameraDistance;
-        -- Загружаем новые настройки Face View
         self.config.useFaceView = saved.useFaceView ~= nil and saved.useFaceView or true;
         self.config.faceViewDistance = saved.faceViewDistance or 2.5;
         self.config.useFirstPersonView = saved.useFirstPersonView ~= nil and saved.useFirstPersonView or true;
@@ -359,7 +316,6 @@ function DynamicCamera:SaveConfig()
         savedCameraYaw = self.config.savedCameraYaw,
         savedCameraPitch = self.config.savedCameraPitch,
         savedCameraDistance = self.config.savedCameraDistance,
-        -- Сохраняем новые настройки
         useFaceView = self.config.useFaceView,
         faceViewDistance = self.config.faceViewDistance,
         useFirstPersonView = self.config.useFirstPersonView,
@@ -408,11 +364,11 @@ function DynamicCamera:Initialize()
     self.initialized = true;
 
     if DEFAULT_CHAT_FRAME then
-        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Динамическая камера инициализирована (режим Face View)");
+        DEFAULT_CHAT_FRAME:AddMessage("DialogUI: Динамическая камера инициализирована");
     end
 end
 
--- Слэш-команды
+-- Слэш-команды (без изменений)
 SlashCmdList["DYNAMICCAMERA_TOGGLE"] = function()
     DynamicCamera.config.enabled = not DynamicCamera.config.enabled;
     DynamicCamera:SaveConfig();
